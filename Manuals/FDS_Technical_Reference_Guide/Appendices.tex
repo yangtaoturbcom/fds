@@ -9,7 +9,7 @@
 $A_{\rm p,c}$ \hspace{1in}\= droplet/particle cross sectional area \\
 $A_{\rm p,s}$ \hspace{1in}\= droplet/particle surface area \\
 $A_{\alpha\beta}$         \> pre-exponential factor for solid phase Arrhenius reaction \\
-$B$                       \> emission source term \\
+B                       \> emission source term; particle mobility \\
 $C$                       \> sprinkler C-factor; coefficient of natural convection \\
 $C_{\rm d}$               \> drag coefficient \\
 $C_{\rm m}$               \> momentum accommodation coefficient \\
@@ -22,12 +22,13 @@ $D$                       \> droplet/particle diameter   \\
 $D_{\alpha}$              \> diffusion coefficient \\
 $D_{\rm v,0.5}$           \> median volumetric droplet diameter \\
 $E$                       \> activation energy \\
+Fu                        \> Fuchs factor \\
 $\bof_{\rm b}$            \> external force vector (excluding gravity) \\
 $g$                       \> acceleration of gravity \\
 $\bg$                     \> gravity vector, normally $(0,0,-g)$ \\
 $\cH$                      \> total pressure divided by the density (Bernoulli integral)\\
 $H_{{\rm r},\alpha\beta}$ \> heat of reaction for a solid phase reaction     \\
-$h$                       \> heat transfer coefficient; Planck constant      \\
+$h$                       \> heat transfer coefficient; mass transfer coefficient; enthalpy; Planck constant      \\
 $h_{\rm s,\alpha}$        \> sensible enthalpy of species $\alpha$   \\
 $I$                       \> radiation intensity per unit of solid angle     \\
 $I_{\rm b}$               \> radiation blackbody intensity per unit of solid angle  \\
@@ -91,7 +92,8 @@ $\Delta h$                \> heat of combustion \\
 $\Delta h_\OTWO$          \> energy released per unit mass oxygen consumed \\
 $\Delta h_{\rm f,\alpha}^0$ \> heat of formation of species $\alpha$ \\
 $\delta$                  \> film thickness; scaling factor of thickness and density \\
-$\epsilon$                \> dissipation rate; emissivity \\
+$\epsilon$                \> dissipation rate; emissivity; agglomeration factor \\
+$\eta$                    \> agglomeration apportioning factor \\
 $\kappa$                  \> absorption coefficient; von Karman constant \\
 $\lambda$                 \> mean free path of gas molecules; wavelength of thermal radiation\\
 $\mu$                     \> dynamic viscosity \\
@@ -102,8 +104,9 @@ $\nu_{{\rm g},\gamma}$    \> yield of gaseous species $\gamma$ in solid phase re
 $\rho$                    \> density \\
 $\bar{\tau}_{\om}$        \> mean spectral transmissivity of a narrow band centered in $\om$ \\
 $\btau_{ij}$              \> viscous stress tensor \\
+$\Phi$                    \> agglomeration kernel \\
 $\phi$                    \> porosity \\
-$\chi$                    \> shape factor \\
+$\chi$, $C_{\rm s}$       \> shape factor \\
 $\chi_{\rm r}$            \> radiative loss fraction \\
 $\sigma$                  \> Stefan-Boltzmann constant; constant in droplet size distribution; surface tension \\
 $\sigma_{\rm p}$          \> particle scattering coefficient \\
@@ -126,9 +129,11 @@ g                         \> gas \\
 $ijk$                     \> gas phase cell indices \\
 n                         \> band properties \\
 p                         \> particle/droplet \\
+PK                        \> collision efficiency \\
 $p$                       \> pressure \\
 r                         \> radiative \\
-s                         \> solid; sensible; soot \\
+s                         \> solid; sensible; soot\\
+S                         \> sticking factor \\
 w                         \> wall \\
 $\alpha$                  \> gas species index \\
 $\beta$                   \> index of reaction \\
@@ -374,19 +379,27 @@ Therefore, if $\bar{p}$ is constant and uniform then $\rho h_s$ is constant and 
 %The mean of the distribution becomes $M_{1}$ and the centered variance becomes $M_{2}-M_{1}^{2}$. To implement subgrid statistics in FDS, we would either need to transport the unmixed fraction or develop a model for the subgrid variance. Since scalar transport is expensive, a first approach is to develop a model to approximate the subgrid variance. If the variance is known, QMOM can then be used to solve for the initial unmixed fraction.
 
 
-\chapter{Absorption Coefficients of Gaseous Fuels}
+\chapter{Gas Phase Absorption Coefficients}
 \label{absorption_coefficients}
 
-For the calculation of the gray or band-mean absorption coefficients, $\kappa_n$, a narrow-band model, RADCAL~\cite{RadCal}, has been
-implemented in FDS. RADCAL computes the spectral properties of the radiation participating species at discrete values of the spectrum (expressed either in wavenumber $\om$ or in wavelength $\la$) and temperature,
+The instantaneous absorption coefficient $\kappa_n$ of the gas mixture at location $\bx$ is calculated as a sum (superposition) of individual gases' gray or band-mean absorption coefficients $\kappa_{n,i}$
+\begin{equation}
+\kappa_{n}(\bx) = \sum_i \kappa_{n,i}(Y_i(\bx),T(\bx))
+\end{equation}
+
+For the calculation of $\kappa_{n,i}(Y_i,T)$, a narrow-band model, RADCAL~\cite{RadCal}, has been
+implemented in FDS. During the initialization stage, RADCAL is used to generate tables of mean absorption coefficients for each individual species in mass fraction range $0 \leq Y_i \leq 1$ and temperature range 270 K $ \leq T \leq $ 2470 K. During the simulation, the local value of $\kappa_n$ is found from the nearest temperature value (lookup) and by interpolating the concentration value.
+
+RADCAL computes the spectral properties of the radiation participating species at discrete values of the spectrum (expressed either in wavenumber $\om$ or in wavelength $\la$) and temperature,
 and returns two alternative mean absorption coefficients for each spectral band, $n$. The first coefficient is the Planck mean coefficient \cite{Tien:1968}
 \begin{equation}
-\kappa_n(P,T) = \dfrac{\pi}{\sigma T^4}
+\kappa_{n,i,{\rm P}}(Y_i,T) = \dfrac{\pi}{\sigma T^4}
 \displaystyle\int_{\la_{\min}}^{\la_{\max}}{I_{\rm b,\la}(T)
-\displaystyle\sum_i 100\bar{\kappa}_i(\la,T) \, P_i \; \d \la}
+100 \, \bar{\kappa}_i(\la,T) \, P_i \; \d \la}
 \end{equation}
-where $\la$ is the wavelength, expressed in units of ${\rm \mu m}$, $P_i$ is the partial pressure of participating species $i$, in units of ${\rm atm}$, and $\bar{\kappa}_i$ is the spectral absorption coefficient of participating species $i$, in units of ${\rm atm^{-1}cm^{-1}}$. Note that the temperature used in the calculation of $\kappa_n$ is the local gas temperature; thus, $\kappa_n(P,T)$ is a function of the gas phase temperature and partial pressure and is independent of the pathlength. Its units are 1/m.
-The factor $100$ is introduced to convert $\bar{\kappa}_i$ from ${\rm atm^{-1}cm^{-1}}$ to ${\rm atm^{-1}m^{-1}}$
+where $\la$ is the wavelength, expressed in units of ${\rm \mu m}$, $P_i=Y_i/(Y_i + (1-Y_i)W_i/W_{\rm N_2})$ is the partial pressure of participating species $i$, in units of ${\rm atm}$, and $\bar{\kappa}_i$ is the spectral absorption coefficient of participating species $i$, in units of ${\rm atm^{-1}cm^{-1}}$. Note that the temperature used in the calculation of $\kappa_n$ is the local gas temperature; thus, $\kappa_{n,i,{\rm P}}(P,T)$ is a function of the gas phase temperature and partial pressure and is independent of the pathlength. Its units are 1/m.
+The factor $100$ is introduced to convert $\bar{\kappa}_i$ from ${\rm atm^{-1}cm^{-1}}$ to ${\rm atm^{-1}m^{-1}}$.
+RADCAL can do these calculations for mixtures of several species, but in FDS, it is used for a single species at the time.
 
 The source term $I_{\rm b,\la}(T)$ is the {\em Planck blackbody distribution law} which expresses the equilibrium rate of radiant energy emitted from a blackbody at temperature, $T$, and as function of wavelength, $\la$. Formally, the monochromatic blackbody radiant energy emitted at a wavelength $\la$ is given by \cite{Penner:1959}
 \be \label{eq:Planck_law}
@@ -395,25 +408,32 @@ I_{\rm b,\la}(T)\d \la = \dfrac{2 \, h \, c^2 \, \la^{-5}}{\exp\left(\dfrac{h \,
 Here, $h$ is the Planck constant ($6.626 \times 10^{-34}$~J$\cdot$s), $c$ is the speed of light in vacuum ($2.998 \times 10^8$~m/s), and $k_{\rm B}$ is the Boltzmann constant ($1.381 \times 10^{-23}$~J/K) \cite{Mohr:2012}.
 $I_{\rm b,\la}(T)$ is in units of $\rm{W/m^{2}/str/m}$; the wavelengths are converted from $\rm{\mu m}$ to $\rm{m}$.
 
-The second coefficient is the so-called {\em path mean} or {\em effective} absorption coefficient, $\kappa_{{\rm e},n}(T)$ which is defined according to the following equation
+The second coefficient is the so-called {\em path mean} or {\em effective} absorption coefficient, $\kappa_{n,i,{\rm e}}(Y_i,T,L)$ which is defined according to the following equation
 \be
-   \int_{\la_{\rm min}}^{\la_{\rm max}}I(\la,L,T,T_{\rm rad}) \; \d \la = \frac{\sigma}{\pi}
-       \left[\left(1-{\rm e}^{-\kappa_{{\rm e},n}(T)\, L}\right) \, T^4 + {\rm e}^{-\kappa_{{\rm e},n}(T) \, L} \, T_{\rm rad}^4\right]
+   \underbrace{\int_{\la_{\rm min}}^{\la_{\rm max}}I(\la,L,Y_i,T,T_{\rm rad}) \; \d \la}_{I_{\rm tot}}
+   = \frac{\sigma}{\pi}
+    \left[\left(1-{\rm e}^{-\kappa_{n,i,{\rm e}}\, L}\right) \, T^4 + {\rm e}^{-\kappa_{n,i,{\rm e}} \, L} \, T_{\rm rad}^4\right]
+    \label{RADCAL_kappamean_def}
 \ee
-where $L$ is the path length and $T_{\rm rad}$ is the effective temperature of flame radiation. RADCAL calculates the left hand integral by calculating the intensity leaving a uniform gas layer of equivalent thickness $L$, bounded by a black wall at temperature $T_{\rm rad}$, for a large number of narrow spectral bands.  By default in FDS, the pathlength, $L$, is five times the characteristic cell size of the simulation, limited by a maximum value of 10~m. It can also be specified by the user. If $T=T_{\rm rad}$ the intensity does not depend on $\kappa_{{\rm e},n}$. The value $\kappa_{{\rm e},n}(T_{\rm rad})$ is therefore interpolated from the neighbouring temperatures.
+where $L$ is the path length and $T_{\rm rad}$ is the effective temperature of flame radiation. RADCAL calculates the left hand integral by calculating the intensity leaving a uniform gas layer of equivalent thickness $L$, bounded by a black wall at temperature $T_{\rm rad}$, for a large number of narrow spectral bands. Solving from equation~\ref{RADCAL_kappamean_def} gives
+\be
+  \kappa_{n,i,{\rm e}}(Y_i,T,L) = -\frac{1}{L}\ln\left(\frac{I_{\rm tot}-I_b(T)}{I_b(T_{\rm rad})-I_b(T)}\right)
+\ee
+where $I_b(T) = \sigma T^4/\pi$.
+
+By default in FDS, the pathlength, $L$, is 10~cm. It can also be specified by the user. If $T=T_{\rm rad}$ the intensity does not depend on $\kappa_{n,i,{\rm e}}$, and the value $\kappa_{n,i,{\rm e}}(T_{\rm rad})$ is therefore interpolated from the neighboring temperatures.
 
 In cases with only one band ($N$=1), the smaller of the two absorption coefficients is used:
 \be
-   \kappa_n=\min \Big( \kappa_n(P,T),\kappa_{{\rm e},n}(T) \Big)
+   \kappa_{n,i}=\min \Big( \kappa_{n,i,{\rm P}}(Y_i,T),\kappa_{n,i,{\rm e}}(Y_i,T,L) \Big)
 \ee
-If $N>1$ or $L=0$, $\kappa_n=\kappa_n(P,T)$. Note that the spectral data within RADCAL are used whenever the gas mixture contains water vapor, fuel or combustion products, regardless of the number of radiation bands $N$.
+If $N>1$ or $L=0$, $\kappa_{n,i}=\kappa_{n,i,{\rm P}}$. Note that the spectral data within RADCAL are used whenever the gas mixture contains water vapor, fuel or combustion products, regardless of the number of radiation bands $N$.
 
 \textbf{Note on wavenumber, wavelength, and frequency}: some confusion might arise when dealing with the various quantities describing the wave nature of radiation. These quantities are wavenumber $\om$, wavelength $\la$, and frequency denoted here $\nu$. Most users may be familiar with the frequency $\nu$, in units of \textit{hertz}, ${\rm Hz}$, representing the number of cycles per second. While this unit is preferred for radiation waves of low energy such as radio waves, wavelength and wavenumber are preferred for waves of higher energy. Wavenumber and wavelength are related to frequency through \cite{Penner:1959}
 \be
  \la = c/\nu \: \: \rm{and} \: \: \om = \nu /c
 \ee
 where $c$ is the speed of light in a vacuum. The wavelength, $\la$, represents the distance traveled by the wave during one cycle, assuming it travels at the speed of light in a vacuum. Its units are commonly expressed in ${\rm \mu m}$. Wavenumber, $\om$, is the reciprocal of the wavelength. It represents the number of cycles per unit length. In most infrared spectroscopic work, it is expressed in units of ${\rm cm^{-1}}$. This is the unit used in the sections below. One can  easily switch from wavenumber in units of ${\rm cm^{-1}}$ to wavelength in units of ${\rm \mu m}$ using the relation
-
 \be
   \la \; {\rm \mu m}  \; = 10000/\om \; \; {\rm cm^{-1}}
 \ee
@@ -425,7 +445,6 @@ I_{\rm b,\la}(T) \d \la = -I_{\rm b,\om}(T)\d \om
 \ee
 the negative sign is introduced because $\om$ is the reciprocal of $\la$.
 Since $\la$ = 1/$\om$, it comes
-
 \be
 \dfrac{\d \la}{\d \om} = -\dfrac{1}{\om^2}
 \ee
@@ -587,7 +606,7 @@ Propylene has only one plane of symmetry and belongs to the point group $C_s$ \c
     \hline
    \end{tabular}
 \end{table}
-Band~3 corresponds to the stretching of $\rm CH$ and is the strongest of all Propylene absorbing bands. All the propylene IR spectral absorption data were obtained from high resolution FTIR experiments with temperatures varying from 296~K to 1003~K~\cite{Wakatsuki:2005}. The spectral absorption coefficients were obtained by fitting the experimental spectral transmissivity of a homogeneous column of isothermal propylene with a total pressure of 1~atm using the Goody model.
+Band~3 corresponds to the stretching of $\rm CH$ and is the strongest of all propylene absorbing bands. All the propylene IR spectral absorption data were obtained from high resolution FTIR experiments with temperatures varying from 296~K to 1003~K~\cite{Wakatsuki:2005}. The spectral absorption coefficients were obtained by fitting the experimental spectral transmissivity of a homogeneous column of isothermal propylene with a total pressure of 1~atm using the Goody model.
 
 \subsubsection{Propane: $\rm C_3H_8$}
 
@@ -731,53 +750,9 @@ $\bar{\kappa}_i$ and $\bar{\gamma}_i$ in temperature and/or in wavenumber is
 performed by RADCAL when necessary. If the temperature sought is out of the
 tabulated data range, then the data at the nearest temperature are used.
 
-\chapter{A Simple Model of Flame Extinction}
-\label{o2_based_model}
 
-\subsubsection*{Frederick W. Mowrer, Department of Fire Protection Engineering, University of Maryland}
 
-A diffusion flame immersed in a vitiated atmosphere will extinguish before consuming all the
-available oxygen from the atmosphere.  The classic example of this behavior is a candle burning
-within an inverted jar.  This same concept has been applied within FDS
-to determine the conditions under which the local ambient oxygen concentration will no longer
-support a diffusion flame.  In this appendix, the critical adiabatic flame temperature
-concept is used to estimate the local ambient oxygen concentration at which extinction will
-occur.
 
-Consider a control volume characterized
-by a bulk temperature, $T_m$, a mass, $m$, an average specific heat, $\overline{c_p}$, and an oxygen mass
-fraction, $Y_\OTWO$.  Complete combustion of the oxygen within the control volume would release a
-quantity of energy given by:
-\be
-   Q = m \, \hat{Y}_\OTWO \, \left( \frac{\Delta H}{r_\OTWO}  \right)  \label{bbb}
-\ee
-where $\Delta H/r_\OTWO$ has a relatively constant value of
-approximately 13100~kJ/kg for most fuels of interest for fire applications.\footnote{C. Huggett, ``Estimation of the Rate of Heat Release by Means of Oxygen
-Consumption,'' {\em Fire and Materials}, Vol.~12, pp.~61-65, 1980.}
-Under adiabatic conditions, the energy released by combustion of the available oxygen within
-the control volume would raise the bulk temperature of the gases within the control volume by an
-amount equal to:
-\be
-   Q = m \, \overline{c_p} \, (T_f - T_m)  \label{eee}
-\ee
-The average specific heat of the gases within the control volume can be calculated based on the
-composition of the combustion products as:
-\be
-   \overline{c_p} = \frac{1}{(T_f-T_m)} \, \sum_\alpha \int_{T_m}^{T_f} c_{p,\alpha} (T) \, dT
-\ee
-To simplify the analysis, the combustion products are assumed to have an average specific heat
-over the temperature range of interest. The relationship between the oxygen mass fraction within the control volume and the adiabatic
-temperature rise of the control volume is evaluated by equating Eqs.~(\ref{bbb}) and (\ref{eee}):
-\be
-   \hat{Y}_{\OTWO,lim} = \frac{ \overline{c_p} (T_f-T_m) }{\Delta H/r_\OTWO}
-\ee
-If $\hat{Y}_{\OTWO} < \hat{Y}_{\OTWO,lim}$ then combustion is not allowed and  $\Delta \hat{Y}_{F}$ is set to 0.
-
-As an example, the critical adiabatic flame temperature can be assumed to have a constant value of approximately 1600~K for hydrocarbon diffusion flames, as suggested by Beyler\footnote{C. Beyler, ``Flammability Limits of Premixed and Diffusion Flames,'' {\em SFPE Handbook of Fire Protection Engineering} (3rd Ed.), National Fire Protection Association, Quincy, MA, 2003.}. The combustion products can have an average specific heat of \SI{1.2}{kJ/(kg.K)} which is a value similar to that of nitrogen, the primary component of the products. Then, the relationship between the limiting oxygen mass fraction and the bulk temperature of a control volume is given by:
-\be
-   \hat{Y}_{\OTWO,lim} = \frac{ \overline{c_p} (T_{CFT}-T_m) }{\Delta H/r_\OTWO} \approx  \frac{ 1.2 \, (1600-T_m) }{ 13100}  \label{extinction_model}
-\ee
-For a control volume at a temperature of \SI{300}{K}, i.e., near room temperature, the limiting oxygen mass fraction would evaluate to $\hat{Y}_{\OTWO,lim}=0.12$.  This value is consistent with the measurements of Morehart, Zukoski and Kubota\footnote{Morehart, J., Zukoski, E., and Kubota, T., ``Characteristics of Large Diffusion Flames Burning in a Vitiated Atmosphere,'' {\em Third International Symposium on Fire Safety Science}, Elsevier Science Publishers, pp.~575-583, 1991.} who measured the oxygen concentration at extinction of flames by dilution of air with combustion products. They found that flames self-extinguished at oxygen concentrations of 12.4~\% to 14.3~\%. Note that their results are expressed as volume, not mass, fractions. Beyler's chapter in the SFPE Handbook references other researchers who measured oxygen concentrations at extinction ranging from 12~\% to 15~\%.
 
 \chapter{Numerical Methods for Integration of Complex Chemistry}
 \label{chemistry_integration}
@@ -821,11 +796,11 @@ In Eq.~(\ref{eq:A4}), $A$ represents the time updated value of the species conce
 
 In addition to increasing the order of the error in the numerical scheme, Richardson extrapolation also provides an estimate of the error value. This estimate is calculated via a Taylor expansion:
 \begin{equation}\label{eq:error}
-error \approx \frac{1}{15}\left(\frac{4\,A_4-A_2}{3} - \frac{4\,A_2-A_1}{3}\right)
+\hbox{error} \approx \frac{1}{15}\left(\frac{4\,A_4-A_2}{3} - \frac{4\,A_2-A_1}{3}\right)
 \end{equation}
-The time step ($\Delta t_{new}$) required to maintain the specified/acceptable error ($err\_tol$) can be calculated by using the local error ($error$), the current time step ($\Delta t$), and the order of error within the numerical integration scheme, in this case fourth-order:
+The time step ($\Delta t_{\rm new}$) required to maintain the specified/acceptable error ($\rm err\_tol$) can be calculated by using the local error (error), the current time step ($\Delta t$), and the order of error within the numerical integration scheme, in this case fourth-order:
 \begin{equation}\label{eq:dt_new}
-\Delta t_{new}=\Delta t \left(\frac{err\_tol}{error}\right)^{1/4}
+\Delta t_{\rm new}=\Delta t \left(\frac{\rm err\_tol}{\rm error}\right)^{1/4}
 \end{equation}
 Equation (\ref{eq:dt_new}) indicates that if the error estimate is large relative to the tolerance, then the new time step decreases; whereas if the error is small, then the new time step increases. This dynamic time stepping scheme improves computational efficiency because it allows the integrator to take the largest time step possible bounded by either the error tolerance or the global simulation time step, thus minimizing the total number of integration steps required.
 
@@ -867,17 +842,63 @@ The ratio of Eq.~(\ref{eq:sum_abs_tv}) and Eq.~(\ref{eq:abs_sum_tv}) is 3, which
 \chapter{The Unmixed Fraction}
 \label{app:unmixed_fraction}
 
-In Sec.~\ref{sec:subgrid_evironment}, ``A Simple Subgrid Mixing Environment'', we present the evolution equation for an important variable, the unmixed fraction, $\zeta$, in the batch reactor model for turbulent combustion.  This appendix shows the development of that equation.
+In Sec.~\ref{sec:subgrid_evironment} we present the evolution equation for an important variable, the unmixed fraction, $\zeta$, in the batch reactor model for turbulent combustion.  This appendix explains the development of that equation.
 
 \subsection*{Moments of the PDF Transport Equation}
 \label{app:pdf_transport}
 
+The cell mean mass fraction of species $\alpha$ is denoted $\widetilde{Y}_\alpha(t)$. A fluid parcel at any point within the cell exists in one of two states: completely unmixed or completely mixed.  Let $\hat{Y}_\alpha(t)$ denote the mass fraction of $\alpha$ in the mixed reactor zone, initially equal to the cell mean, $\hat{Y}_\alpha(0) = \widetilde{Y}_{\alpha}^0 \equiv \widetilde{Y}_{\alpha}(0)$.  With $\psi_\alpha \in [0,1]$ representing the sample space for the composition, the subgrid probability density function (PDF) may be written as
+\begin{equation}
+\label{eq:pdf}
+f(\psi_\alpha;t) = w_1 \delta(0-\psi_\alpha) + w_2 \delta(1-\psi_\alpha) + w_3 \delta(\hat{Y}_\alpha[t] - \psi_\alpha)
+\end{equation}
+where $\delta(x)$ is the Dirac delta function.  In other words, if we look at a specific point, the mass fraction of species $\alpha$ may only be 0, 1, or equal to the mixed zone value, $\hat{Y}_\alpha$ (see Fig.~\ref{fig_subgrid_environment}).  The weights $w_i$ must satisfy integral constraints on the cell: $\int f(\psi_\alpha;t) \d \psi_\alpha = 1$, $\int f(\psi_\alpha;t) \psi_\alpha \d \psi_\alpha = \widetilde{Y}_\alpha(t)$.
+
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}[scale=0.75]
+\begin{axis}[
+    width=0.95\linewidth,
+    axis equal image,
+    enlargelimits=false,
+    axis x line=none,
+    axis y line=none,
+    colorbar,
+    point meta min=0, point meta max=1,
+    colormap={whiteblack}{gray(0cm)=(0); gray(1cm)=(1)},
+    colorbar style={
+        title=Mass Fraction,
+        at={(1.05,0.01)}, % Coordinate system relative to the main axis. (1,1) is upper right corner of main axis.
+        anchor=south west,
+        height=.98*\pgfkeysvalueof{/pgfplots/parent axis height}, % Scale the colorbar relative to the main axis
+        /pgf/number format/.cd, % Change the key directory to /pgf/number format
+        fixed, fixed zerofill, precision=1,
+        /tikz/.cd  % Change back to the normal key directory
+    }
+    	]
+	\addplot graphics [xmin=-2.10, xmax=-0.1, ymin=-1, ymax=1] {FIGURES/transport_vs_mixing_0461_b}
+	node [above,white] at (30,15) {\Large(a)};
+	\addplot graphics [xmin= 0.10, xmax= 2.1, ymin=-1, ymax=1] {FIGURES/transport_vs_mixing_0461_a}
+	node [above,white] at (250,15) {\Large(b)};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\caption[Idealized subgrid environment for batch reactor model]{Subgrid environment at an instant in time in a hypothetical computational cell (batch reactor). (a) Well-resolved scalar field, highly unmixed, after turbulent transport. (b) Idealized subgrid environment: the local mass fraction is either 0, 1, or equal to a mixed mean.  In the present model, the gray region is called the ``mixed reactor zone'' and evolves in time (in volume and composition) during the integration of the batch reactor.}
+\label{fig_subgrid_environment}
+\end{figure}
+
+For convenience, we define the \emph{unmixed fraction}, $\zeta(t)$, as the fraction of mass within the cell existing as either 0 or 1.  To satisfy the integral constraints, the PDF weights are set to
+\begin{align}
+w_1 &= \zeta \, (1 - \widetilde{Y}_\alpha^0) \\
+w_2 &= \zeta \, \widetilde{Y}_\alpha^0 \\
+w_3 &= 1-\zeta
+\end{align}
 As discussed by Pope \cite{Pope:2000}, the PDF (\ref{eq:pdf}) evolves by the Fokker-Planck equation:
 \begin{equation}
 \label{eq:fokker-planck}
 \frac{\partial f}{\partial t} = -\frac{\partial}{\partial \psi_\alpha} \left(f \left\langle \left. \frac{\partial Y_\alpha}{\partial t} \right| \psi_\alpha \right\rangle \right) \,\mbox{.}
 \end{equation}
-The term on the right in angled brackets is a conditional mean.  Here it is modeled using a variant of IEM \cite{Dopazo:1974} which we call `interaction by exchange with the mixed mean' or IEMM.  When including chemical reaction, the conditional mean is modeled by
+The term on the right in angled brackets is a conditional mean.  Here it is modeled using a variant of IEM \cite{Dopazo:1974} which we call {\em interaction by exchange with the mixed mean} or IEMM.  When including chemical reaction, the conditional mean is modeled by
 \begin{equation}
 \label{eq:iem2}
 \left\langle \left. \frac{\partial Y_\alpha}{\partial t} \right| \psi_\alpha \right\rangle = \frac{1}{\tau_{\si{mix}}}(\hat{Y}_\alpha - \psi_\alpha) + \frac{\d \hat{Y}_\alpha}{\d t} \,\mbox{.}
@@ -920,10 +941,13 @@ Comparing (\ref{eq:diff_comp}) with (\ref{eq:first_moment}) we see that during t
 \end{equation}
 Note that while (\ref{mass_prod_rate}) invokes (\ref{eq:zeta_ode}) in its derivation, (\ref{eq:first_moment}) does not---it is an independent derivation that relies on the choice of mixing model, in this case a variant of IEM as shown in (\ref{eq:iem2}).
 
+
+
 \chapter{Limiting Behavior of the Turbulent Batch Reactor Model}
 \label{app:eddy_dissipation_concept}
+\label{source_term}
 
-In Sec.~\ref{source_term}, we state that our turbulent batch reactor model, Eq.~(\ref{mass_prod_rate}), is equivalent to other approaches to modeling turbulent combustion under certain limiting conditions.  These limiting cases are discussed below.
+The turbulent batch reactor model, Eq.~(\ref{mass_prod_rate}), is equivalent to other approaches to modeling turbulent combustion under certain limiting conditions.  These limiting cases are discussed below.
 
 \section{Burke-Schumann Solution}
 
@@ -963,8 +987,8 @@ where $\gamma_\lambda$ is the ``ratio between the mass of the fine structure and
 
 %\paragraph{Remarks}
 %\begin{enumerate}
-%%\item It is not clear why $\gamma_\lambda$ should be squared in (\ref{eq:lilleberg_edc}).  In fact, \cite{Chen:1} does not square this quantity.
-%%\item Given that $\gamma_\lambda$ and $\chi$ are in the range [0,1], the sign of the RHS of (\ref{eq:panjwani_edc}) is inconsistent since for fast chemistry $Y_{\si{F}}^\star$ may be 0 (this sign convention is used consistently by the aforementioned authors).
+%\item It is not clear why $\gamma_\lambda$ should be squared in (\ref{eq:panjwani_edc}).  In fact, \cite{Chen:1} does not square this quantity.
+%\item Given that $\gamma_\lambda$ and $\chi$ are in the range [0,1], the sign of the RHS of (\ref{eq:panjwani_edc}) is inconsistent since for fast chemistry $Y_{\si{F}}^\star$ may be 0 (this sign convention is used consistently by the aforementioned authors).
 %\item A comparison between the models written down by \cite{Panjwani:2010} (see Eq.~(\ref{eq:panjwani_edc})) and \cite{Lilleberg:2010} makes it clear that the cell mean mass fraction may be written as $\widetilde{Y}_\alpha = (1-\gamma_\lambda^2 \chi) Y_\alpha^0 + \gamma_\lambda^2 \chi \, Y_\alpha^\star$, which is equivalent to our (\ref{eq:final_comp}) with $\zeta = 1-\gamma_\lambda^2 \chi$.  This definition of the cell mean is inconsistent with the stated definition of $\gamma_\lambda$ (quoted above) in \cite{Panjwani:2010}.
 %\item Equation (\ref{eq:panjwani_edc}) may be rewritten as
 %   \begin{align}
@@ -979,8 +1003,6 @@ where $\gamma_\lambda$ is the ``ratio between the mass of the fine structure and
 %      \frac{\d \hat{Y}_\alpha}{\d t} = \frac{\widetilde{Y}_\alpha^0 - \hat{Y}_\alpha}{\tau_{\si{mix}}(1-\zeta)} \,\mbox{,}
 %   \end{equation}
 %   where the residence time in the reactor is $\tau_{\si{mix}}(1-\zeta)$.
-%
-%%   There is clearly a sign error in (\ref{eq:psr}), which may account for unsatisfactory results when implementing kinetics into the PSR models by previous authors \cite{Lilleberg:2010}. {\color{red}[I'm not sure I want to include all this in the paper.  But I cannot seem to reconcile the sign issue.  I would rather be able to simply say our approach compares with Panjwani et al. for constant $\zeta$.]}
 %\end{enumerate}
 
 %\chapter{Derivation of the Werner Wengle Wall Model}
@@ -1155,7 +1177,6 @@ The correction terms that guarantee mass conservation ($V_c \, \rho_c \, \delta 
 %\end{equation}
 
 
-
 %\chapter{The Dynamic Smagorinsky Model}
 %%\subsubsection{R. McDermott}
 %\label{app_dynsmag}
@@ -1283,133 +1304,125 @@ The correction terms that guarantee mass conservation ($V_c \, \rho_c \, \delta 
 %\end{enumerate}
 
 
+\chapter{Lilly's Analysis for Turbulent Flows}
+\label{app:lilly_analysis}
+
+The constants for the Smagorinsky and Deardorff turbulence models are not wholly empirical.  They may be derived by assuming an inertial range Kolmogorov spectrum and ``production equals dissipation''.  This analysis for Smagorinsky is attributed to D.~K.~Lilly \cite{Lilly:1967}, and may also be found in Sagaut \cite{Sagaut:2001}.  For Deardorff, this analysis is the solution to Exercise 13.45 in Pope \cite{Pope:2000}.
+
+\subsubsection*{Smagorinsky}
+
+The assumption that the mean production of subgrid-scale kinetic energy ($\mathcal{P}_{sgs}$) equals the mean dissipation rate ($\varepsilon$) implies (here I am being cavalier with my mean quantities)
+\begin{equation}
+\label{eqn_prod_eq_diss}
+\mathcal{P}_{sgs} = \varepsilon
+\end{equation}
+Using (\ref{eqn_ke_dissipation}) at high Reynolds number ($\mu_t \gg \mu$) for an incompressible flow ($\nabla\!\cdot\mathbf{u} = 0$), (\ref{eqn_prod_eq_diss}) leads to
+\begin{equation}
+2\nu_t \tilde{S}_{ij}\tilde{S}_{ij} = 2\nu S_{ij} S_{ij}
+\end{equation}
+The components of the strain tensor $S_{ij}$ are greater in magnitude than the filtered strain components $\tilde{S}_{ij}$ and so the turbulent viscosity, $\nu_t$, must be larger than the molecular viscosity $\nu$, as would be expected.
+
+We assume the filter width, $\Delta$, is in the inertial subrange of a high Reynolds number flow.  There the Kolmogorov kinetic energy spectrum may be written as
+\begin{equation}
+\label{eqn_kolmogorov}
+E(k) = C_K \varepsilon^{2/3} k^{-5/3}
+\end{equation}
+displaying the famous ``minus five-thirds'' scaling.  The Kolmogorov constant is usually take to be $C_K \approx 1.5$.
+
+Using the filtered dissipation spectrum (see Pope \cite{Pope:2000}), the Kolmogorov spectrum (\ref{eqn_kolmogorov}), and assuming a spectral cutoff filter we may write
+\begin{align}
+2 \nu \tilde{S}_{ij}\tilde{S}_{ij} &= 2 \nu \int_0^{\frac{\pi}{\Delta}} k^2 E(k) \,\d k \\
+&= 2 \nu C_K \varepsilon^{2/3} \int_0^{\frac{\pi}{\Delta}} k^{1/3} \,\d k
+\end{align}
+Dividing by $\nu$ gives
+\begin{align}
+2 \tilde{S}_{ij}\tilde{S}_{ij} &= 2 C_K \varepsilon^{2/3} \frac{3}{4} \left[ k^{4/3} \right]_0^{\frac{\pi}{\Delta}} \\
+|\tilde{S}|^2 &= C_K \varepsilon^{2/3} \frac{3}{2} \left(\frac{\pi}{\Delta}\right)^{4/3}
+\end{align}
+where $|\tilde{S}| \equiv (2 \tilde{S}_{ij}\tilde{S}_{ij})^{1/2}$.  This allows us to write the dissipation rate in terms of the filtered strain magnitude:
+\begin{equation}
+\label{eqn_diss_strain}
+\varepsilon = \left(\frac{2}{3 C_K}\right)^{3/2} \left(\frac{\Delta}{\pi}\right)^2 |\tilde{S}|^3
+\end{equation}
+
+Now, we invoke production equals dissipation.  Below, the left-hand side is the production of SGS kinetic energy.  The right-hand side is the dissipation rate in terms of the filtered strain from (\ref{eqn_diss_strain}):
+\begin{align}
+\label{eqn_prod_diss_2}
+2 \nu_t \tilde{S}_{ij} \tilde{S}_{ij} &= \varepsilon \\
+\nu_t |\tilde{S}|^2 &= \left(\frac{2}{3 C_K}\right)^{3/2} \left(\frac{\Delta}{\pi}\right)^2 |\tilde{S}|^3
+\end{align}
+Inserting the constant coefficient Smagorinsky model for the turbulent viscosity, $\nu_t = (C_s \Delta)^2 |\tilde{S}|$, yields
+\begin{equation}
+(C_s \Delta)^2 |\tilde{S}|^3 = \left(\frac{2}{3 C_K}\right)^{3/2} \left(\frac{\Delta}{\pi}\right)^2 |\tilde{S}|^3
+\end{equation}
+Finally, using $C_K = 1.5$ and solving for $C_s$ gives
+\begin{equation}
+\label{eqn_smag_const_lilly}
+C_s = \left[ \frac{2}{(3)(1.5)} \right]^{3/4} \frac{1}{\pi} = 0.17
+\end{equation}
+
+\subsubsection*{Deardorff}
+
+The turbulent viscosity for the Deardorff form of the isotropic eddy viscosity is $\nu_t = C_\nu \Delta \, k_{sgs}^{1/2}$.  In this section, we derive the value of the constant using Lilly's analysis.  To start, we require a relationship between the dissipation rate and the subgrid kinetic energy $k_{sgs}$.  This relationship does not depend on how $k_{sgs}$ is computed---it depends on the shape of the energy spectrum and on where the filter width cutoff falls in relation to that spectrum.  Here we assume a Kolmogorov spectrum at high Re with the filter width falling inside the inertial subrange.  Then the subgrid kinetic energy is well approximated by integrating the spectrum from the cutoff wave number to infinity:
+\begin{align}
+k_{sgs} &= \int_{\frac{\pi}{\Delta}}^\infty E(k) \,\d k \\
+&= C_K \varepsilon^{2/3} \int_{\frac{\pi}{\Delta}}^\infty k^{-5/3} \,\d k \\
+%&= C_K \varepsilon^{2/3} \left(\frac{-3}{2}\right) \left[ k^{-2/3} \right]_{\frac{\pi}{\Delta}}^\infty \\
+%&= 0 - C_K \varepsilon^{2/3} \left(\frac{-3}{2}\right) \left(\frac{\pi}{\Delta}\right)^{-2/3} \\
+&= \frac{3}{2} C_K \varepsilon^{2/3} \left(\frac{\Delta}{\pi}\right)^{2/3}
+\end{align}
+which rearranges to
+\begin{equation}
+\label{eqn_diss_ksgs}
+\varepsilon = \left(\frac{2}{3 C_K}\right)^{3/2} \frac{\pi}{\Delta} \,k_{sgs}^{3/2}
+\end{equation}
+Equating the relationships for the dissipation rates from Smagorinsky (\ref{eqn_diss_strain}) and Deardorff (\ref{eqn_diss_ksgs}) gives
+\begin{align}
+\left(\frac{\Delta}{\pi}\right)^2 |\tilde{S}|^3 &= \frac{\pi}{\Delta} \,k_{sgs}^{3/2} \\
+%|\tilde{S}|^3 &= \left( \frac{\pi}{\Delta} \right)^3 \,k_{sgs}^{3/2} \\
+|\tilde{S}|^2 &= \left( \frac{\pi}{\Delta} \right)^2 \,k_{sgs}
+\end{align}
+Now, we again invoke production equals dissipation using Deardorff as the eddy viscosity model and (\ref{eqn_diss_ksgs}) for the dissipation rate:
+\begin{align}
+\nu_t |\tilde{S}|^2 &= \varepsilon \\
+C_\nu \Delta \,k_{sgs}^{1/2} \, \left(\frac{\pi}{\Delta}\right)^2 k_{sgs} &= \left(\frac{2}{3 C_K}\right)^{3/2} \frac{\pi}{\Delta} \,k_{sgs}^{3/2}
+\end{align}
+Using $C_K = 1.5$ and solving for $C_\nu$ yields
+\begin{equation}
+C_\nu = \left[\frac{2}{(3)(1.5)}\right]^{3/2} \frac{1}{\pi} = 0.094
+\end{equation}
+FDS uses a value of $C_\nu = 0.1$ for the Deardorff model constant.
+
 
 \chapter{Fluid-Particle Momentum Transfer}
 \label{particle_momentum_transfer}
 
-The trajectories of Lagrangian particles in FDS could be calculated with Forward Euler (FE) time integration. However, Forward Euler extracts momentum from the cell corresponding to each particle's initial position and this may cause large changes in the flow field and ultimately instability unless the time step is extremely small. Consequently, a stable, single-step approximate solution is developed and is implemented in FDS.
-
-Several effects are neglected in this formulation. One is the effect of the change in droplet mass between  time steps. The droplet's evaporation is not coupled to this model. This is justified because the change in droplet mass per time step is small. A second neglected effect is the change in drag coefficient between time steps. This is justified because of the large uncertainties in the drag coefficients. Modeling the time derivative of the drag coefficient would not improve accuracy beyond these uncertainties, but it would slow down the computation.
-
-\subsubsection*{Relative velocities}
-Let $m_{\rm p}$ denote the particle mass, $\mathbf{u}$ the particle velocity, $A_\text{p,c}$ the particle cross-sectional area, $C_\text{d}$ the particle drag coefficient, $\rho$ the fluid mass density, $\mathbf{U}$ the fluid velocity around the particle, $V_\text{g}$ the volume occupied by the fluid in a cell, $M \equiv \rho V_\text{g}$ the fluid mass of a cell, $n_\text{p}$ the number of particles in a cell, $M_\text{p} \equiv M/n_\text{p}$ the average fluid mass per particle in a cell, and $\mathbf{g}$ the gravitational acceleration vector.
-
-The equations of motion of the particles and fluid are formulated as follows from Newton's second law,
-\begin{align}
+The trajectory of a Lagrangian particle is governed by the momentum conservation equation:
+\begin{equation}
     \label{particle_eom}
-    m_{\rm p} \frac{\d \mathbf{u}}{\d t} &= - \frac{1}{2} \rho C_\text{d} A_\text{p,c} (\mathbf{u} - \mathbf{U}) |\mathbf{u} - \mathbf{U}| + m_{\rm p} \mathbf{g} \\[.1in]
-    \label{fluid_eom}
-    M_{\rm p} \frac{\d \mathbf{U}}{\d t} &= \frac{1}{2} \rho C_\text{d} A_\text{p,c} (\mathbf{u} - \mathbf{U}) |\mathbf{u} - \mathbf{U}|
-\end{align}
-The fluid Eq.\ (\ref{fluid_eom}) is a greatly simplified version of Eq.\ (\ref{momeq}). It exists to get a reasonable estimate of the momentum coupling between the fluid and particle phases. Because it neglects terms corresponding to the pressure gradient, viscosity, etc., it is at best first-order accurate when those effects exist. However, unlike first-order accurate Forward Euler, this approach is stable. Additional terms could be added to improve accuracy in certain verification test cases, however, the current approach would solve these with a Forward Euler like step, which can cause instabilities if these terms are not constant. Thus, for the moment these terms are neglected despite their potential utility.
+    m_{\rm p} \frac{\d \mathbf{u}_{\rm p}}{\d t} = - \frac{1}{2} \rho C_\text{d} A_\text{p,c} (\mathbf{u}_{\rm p} - \mathbf{u}) \|\mathbf{u}_{\rm p} - \mathbf{u}\| + m_{\rm p} \mathbf{g}
+\end{equation}
+where $m_{\rm p}$ is the particle mass, $\mathbf{u}_{\rm p}(t)$ the particle velocity, $A_\text{p,c}$ the particle cross-sectional area, $C_\text{d}$ the drag coefficient, $\rho$ the gas density, $\mathbf{u}$ the gas velocity in the vicinity of the particle, and $\mathbf{g}$ the gravity vector. There is no analytical solution to this equation, but its linearized form:
+\begin{equation}
+   \frac{\d \mathbf{u}_{\rm p}}{\d t} = - \beta (\mathbf{u}_{\rm p} - \mathbf{u}) + \mathbf{g}  \quad \; \quad \beta = \frac{1}{2 m_{\rm p}} \rho C_\text{d} A_\text{p,c} \|\mathbf{u}_{\rm p}(0) - \mathbf{u}\|
+\end{equation}
+has the solution:
+\begin{equation}
+   \label{part_soln}
+   \mathbf{u}_{\rm p}(t) = \mathbf{u} + \left( \mathbf{u}_{\rm p}(0) - \mathbf{u} - \frac{\mathbf{g}}{\beta} \right) \hbox{e}^{-\beta t} + \frac{\mathbf{g}}{\beta}
+\end{equation}
+assuming that the gas velocity $\mathbf{u}$ is unchanging over the short duration for which this solution is valid.
 
-If we define $\mathbf{u}_\text{r} \equiv \mathbf{u} - \mathbf{U}$ as the relative velocity between the fluid and the particle, we can find a single equation for the relative velocity by dividing both equations by their respective masses (i.e., $m_{\rm p}$ and $M_{\rm p}$) and then subtracting the second from the first. This result is
-\begin{align}
-    \frac{\d \mathbf{u}_\text{r}}{\d t} = -\frac{1}{2} \rho C_\text{d} A_\text{p,c} \left(\frac{1}{m_{\rm p}} + \frac{1}{M_{\rm p}} \right) \mathbf{u}_\text{r} |\mathbf{u}_\text{r}| + \mathbf{g} \,.
-\end{align}
-This equation can be written in compact form as follows:
-\begin{align}
-    \frac{\d \mathbf{u}_\text{r}}{\d t} = -K_{\rm p} \mathbf{u}_\text{r} |\mathbf{u}_\text{r}| + \mathbf{g} \quad ; \quad K_{\rm p} \equiv \frac{1}{2} \rho C_\text{d} A_\text{p,c} \left(\frac{1}{m_{\rm p}} + \frac{1}{M_{\rm p}} \right) \,.
-\end{align}
-This is the drag equation, which has no solution in terms of elementary functions. Our solution approach first finds a solution neglecting gravity and then adds in a series for the gravity terms. $\mathbf{u}_\text{r} \equiv \mathbf{u}_\text{d} + \mathbf{u}_\text{g}$ is the decomposition of $\mathbf{u}_\text{r}$. The velocities $\mathbf{u}_\text{r}$ and $\mathbf{u}_\text{d}$ both have the same initial condition, $\mathbf{u}_\text{d}(0) = \mathbf{u}_\text{r}(0) \equiv \mathbf{u}(0) - \mathbf{U}(0)$. And $\mathbf{u}_\text{d}$ satisfies the drag equation without gravity, specifically
-\begin{align}
-    \frac{\d \mathbf{u}_\text{d}}{\d t} = -K_{\rm p} \mathbf{u}_\text{d} |\mathbf{u}_\text{d}|
-\end{align}
-The solution subject to these initial conditions is
-\begin{align}
-    \label{ud_exact}
-    \mathbf{u}_\text{d}(t) = \frac{\mathbf{u}(0) - \mathbf{U}(0)}{1 + \beta_{\rm p} t} \quad ; \quad \beta_{\rm p} \equiv K_{\rm p} |\mathbf{u}_{\text{r}}(0)|
-\end{align}
-We can decompose $\mathbf{u}_\text{r}$ to find a series solution for $\mathbf{u}_\text{g}$. The function $\mathbf{u}_\text{g}$ can be written $\mathbf{u_g} = \mathbf{u}_\text{r} - \mathbf{u}_\text{d}$.  So the differential equation for $\mathbf{u}_\text{g}$ is
-\begin{align}
-    \frac{\d \mathbf{u}_\text{g}}{\d t} = -K_{\rm p} (\mathbf{u}_\text{r} |\mathbf{u}_\text{r}| - \mathbf{u}_\text{d} |\mathbf{u}_\text{d}|) + \mathbf{g} \quad ; \quad \mathbf{u}_\text{g}(0) = \mathbf{u}_\text{r}(0) - \mathbf{u}_\text{d}(0) = 0
-\end{align}
-The Taylor series for $\mathbf{u}_\text{g}$ about $t = 0$ is
-\begin{align}
-    \mathbf{u}_\text{g}(t) = \mathbf{u}_\text{g}(0) + t \frac{\d \mathbf{u}_\text{g}}{\d t}(0) + \frac{t^2}{2} \frac{\d^2 \mathbf{u}_\text{g}}{\d t^2}(0) + \frac{t^3}{6} \frac{\d^3 \mathbf{u}_\text{g}}{\d t^3}(0) + \cdots \,.
-\end{align}
-The task now is to find the derivatives of $\mathbf{u}_\text{g}$ at $t = 0$. The first derivative, $\d \mathbf{u}_\text{g} / \d t(0)$, can be seen to be $\mathbf{g}$ by inspection, as we would expect from the solution without drag. The second derivative is more complicated, and we find that
-\begin{align*}
-    \frac{\d^2 \mathbf{u}_\text{g}}{\d^2 t} = -K_{\rm p} \frac{\d}{\d t}(\mathbf{u}_\text{r} |\mathbf{u}_\text{r}| - \mathbf{u}_\text{d} |\mathbf{u}_\text{d}|) + \frac{\d \mathbf{g}}{\d t} = -K_{\rm p} \left(|\mathbf{u}_\text{r}| \frac{\d \mathbf{u}_\text{r}}{\d t} + \mathbf{u}_\text{r} \frac{\d |\mathbf{u}_\text{r}|}{\d t} - |\mathbf{u}_\text{d}| \frac{\d \mathbf{u}_\text{d}}{\d t} - \mathbf{u}_\text{d} \frac{\d |\mathbf{u}_\text{d}|}{\d t}\right)
-\end{align*}
-\begin{align}
-    \frac{\d^2 \mathbf{u}_\text{g}}{\d^2 t}(0) = -K_{\rm p} \left(|\mathbf{u}_\text{r}(0)| \frac{\d \mathbf{u}_\text{r}}{\d t}(0) + \mathbf{u}_\text{r}(0) \frac{\d |\mathbf{u}_\text{r}|}{\d t}(0) - |\mathbf{u}_\text{d}(0)| \frac{\d \mathbf{u}_\text{d}}{\d t}(0) - \mathbf{u}_\text{d}(0) \frac{\d |\mathbf{u}_\text{d}|}{\d t}(0)\right)
-\end{align}
-where
-\begin{align*}
-    \frac{\d \mathbf{u}_\text{r}}{\d t}(0) &= -K_{\rm p} \mathbf{u}_{\text{r}}(0) |\mathbf{u}_{\text{r}}(0)| + \mathbf{g}  \\[.1in]
-    \frac{\d \mathbf{u}_\text{d}}{\d t}(0) &= -K_{\rm p} \mathbf{u}_{\text{r}}(0) |\mathbf{u}_{\text{r}}(0)|
-\end{align*}
-% = -K_{\rm p} \left(\frac{\d \mathbf{u} |\mathbf{u}|}{\d t} - \frac{\d \mathbf{u}_\text{d} |\mathbf{u}_\text{d}|}{\d t} \right)
-The derivative of the length of the velocity vectors (speed) must now be found. It can be shown that for an arbitrary vector $\mathbf{a}$,
-\begin{align*}
-    \frac{\d |\mathbf{a}|}{\d t} = \left(\frac{\mathbf{a}}{|\mathbf{a}|}\right) \cdot \frac{\d \mathbf{a}}{\d t}
-\end{align*}
-The derivatives of the vector lengths can be written as
-\begin{align}
-    \frac{\d |\mathbf{u}_\text{r}|}{\d t} &= \left(\frac{\mathbf{u}_\text{r}}{|\mathbf{u}_\text{r}|}\right) \cdot \frac{\d \mathbf{u}_\text{r}}{\d t} = \left(\frac{\mathbf{u}_{\text{r}}(0)}{|\mathbf{u}_{\text{r}}(0)|}\right) \cdot (-K_{\rm p} \mathbf{u}_{\text{r}}(0) |\mathbf{u}_{\text{r}}(0)| + \mathbf{g})  \\[.1in]
-    \frac{\d |\mathbf{u}_\text{d}|}{\d t} &= \left(\frac{\mathbf{u}_\text{d}}{|\mathbf{u}_\text{d}|}\right) \cdot \frac{\d \mathbf{u}_\text{d}}{\d t} = \left(\frac{\mathbf{u}_{\text{r}}(0)}{|\mathbf{u}_{\text{r}}(0)|}\right) \cdot (-K_{\rm p} \mathbf{u}_{\text{r}}(0) |\mathbf{u}_{\text{r}}(0)|)
-\end{align}
-Once all of this is written out and expanded, the second derivative of $\mathbf{u}_\text{g}$ at $t = 0$ is
-\begin{align}
-    \frac{\d^2 \mathbf{u}_\text{g}}{\d^2 t}(0) = -K_{\rm p} \left[\mathbf{u}_{\text{r}}(0) \left(\frac{\mathbf{u}_{\text{r}}(0) \cdot \mathbf{g}}{|\mathbf{u}_{\text{r}}(0)|}\right) + \mathbf{g} |\mathbf{u}_{\text{r}}(0)|\right] = - \beta_{\rm p} \left[\mathbf{u}_{\text{r}}(0) \left(\frac{\mathbf{u}_{\text{r}}(0) \cdot \mathbf{g}}{|\mathbf{u}_{\text{r}}(0)|^2}\right) + \mathbf{g}\right]
-\end{align}
-This has a term parallel to the initial relative velocity and a term parallel to the gravitational acceleration vector.
+In FDS, the particle position is advanced over the course of a gas-phase time step, $\delta t$, by a series of sub-time steps, $\delta t_{\rm p}$, that are determined so as to ensure that the particle does not traverse the width of a grid cell in one sub-time step:
+\be
+   \delta t_{\rm p} = \frac{\delta t}{\lceil 0.9 \, \hbox{CFL} \rceil } \quad ; \quad \hbox{CFL} = \delta t \max \left( \frac{|u_{\rm p}^n|}{\dx},\frac{|v_{\rm p}^n|}{\dy},\frac{|w_{\rm p}^n|}{\dz} \right)
+\ee
+Note that the {\em ceiling} function, $\lceil \hbox{CFL} \rceil$, denotes the least integer greater than the CFL. For a given time step, denoted by $n$, the particle position is advanced according to:
+\begin{equation}
+    \mathbf{x}_{\rm p}^{n+1} = \mathbf{x}_{\rm p}^n + \frac{\delta t_{\rm p}}{2} \left( \mathbf{u}_{\rm p}^{n+1} + \mathbf{u}_{\rm p}^n \right)
+\end{equation}
+where $\mathbf{u}_{\rm p}^{n+1}$ is given by Eq.~(\ref{part_soln}).
 
-Assembling all these terms, $\mathbf{u}_\text{g}$ can be found to be
-\begin{align}
-    \label{ug_second_order}
-    \mathbf{u}_\text{g}(t) = \mathbf{g} t - \frac{\beta_{\rm p} t^2}{2} \left[\mathbf{u}_{\text{r}}(0) \left(\frac{\mathbf{u}_{\text{r}}(0) \cdot \mathbf{g}}{|\mathbf{u}_{\text{r}}(0)|^2}\right) + \mathbf{g}\right] + \mathit{O}(t^3)
-\end{align}
-Assembling Eqs. (\ref{ud_exact}) and (\ref{ug_second_order}), the solution for $\mathbf{u}_\text{r}$ is
-\begin{align}
-    \label{ur_short}
-    \mathbf{u}_\text{r}(t) &= \frac{\mathbf{u}_{\text{r}}(0)}{1 + \beta_{\rm p} t} + \mathbf{g} t - \frac{\beta_{\rm p} t^2}{2} \left[\mathbf{u}_{\text{r}}(0) \left(\frac{\mathbf{u}_{\text{r}}(0) \cdot \mathbf{g}}{|\mathbf{u}_{\text{r}}(0)|^2}\right) + \mathbf{g}\right] + \mathit{O}(t^3) \quad ; \quad \beta_{\rm p} \equiv K_{\rm p} |\mathbf{u}_{\text{r}}(0)| %\\
-    %\label{ur_expanded}
-    %\mathbf{u} - \mathbf{U} &= \frac{\mathbf{u}(0) - \mathbf{U}(0)}{1 + \beta_{\rm p} t} + \mathbf{g} t - \frac{\beta_{\rm p} t^2}{2} \left[(\mathbf{u}(0) - \mathbf{U}(0)) \left(\frac{(\mathbf{u}(0) - \mathbf{U}(0)) \cdot \mathbf{g}}{|\mathbf{u}(0) - \mathbf{U}(0)|^2}\right) + \mathbf{g}\right] + \mathit{O}(t^3) \quad ; \quad \beta_{\rm p} \equiv K_{\rm p} |\mathbf{u}(0) - \mathbf{U}(0)|
-\end{align}
-
-\subsubsection*{Particle velocities and positions}
-
-The results of the previous section are not directly useful unless $\mathbf{U}(t)$ is known. $\mathbf{U}(t)$ can be found via the conservation of momentum and this leads to a solution for the particle velocities and positions. The fluid and particles can gain or lose momentum due to gravity. Drag forces exchange momentum between the fluid and particle, which does not change the total momentum of the system. Summing the equations of motion and integrating in time to find the total momentum at an instant, we find that
-\begin{align}
-    m_{\rm p} \mathbf{u}(t) + M_{\rm p} \mathbf{U}(t) &= m_{\rm p} \mathbf{u}(0) + M_{\rm p} \mathbf{U}(0) + m_{\rm p} \mathbf{g} t  \\[.1in]
-    \label{part_mom_cons}
-    \mathbf{u}(t) + \alpha_{\rm p} \mathbf{U}(t) &= \mathbf{u}(0) + \alpha_{\rm p} \mathbf{U}(0) + \mathbf{g} t \quad ; \quad \alpha_{\rm p} \equiv \frac{M_{\rm p}}{m_{\rm p}}
-\end{align}
-After recognizing that $\mathbf{u} = \mathbf{U} + \mathbf{u}_\text{r}$ and $\mathbf{u}_\text{r} \equiv \mathbf{u}_\text{d} + \mathbf{u}_\text{g}$, we can write that $\mathbf{u} = \mathbf{U} + \mathbf{u}_\text{d} + \mathbf{u}_\text{g}$ Substituting that result in and solving for $\mathbf{U}$ leads to
-\begin{align*}
-    \mathbf{U}(t) + \mathbf{u}_\text{d}(t) + \mathbf{u}_\text{g}(t) + \alpha_{\rm p} \mathbf{U}(t) &= \mathbf{u}(0) + \alpha_{\rm p} \mathbf{U}(0) + \mathbf{g} t  \\[.1in]
-    \mathbf{U}(t) + \frac{\mathbf{u}_{\text{r}}(0)}{1 + \beta_{\rm p} t} + \mathbf{u}_\text{g}(t) + \alpha_{\rm p} \mathbf{U}(t) &= \mathbf{u}(0) + \alpha_{\rm p} \mathbf{U}(0) + \mathbf{g} t
-\end{align*}
-\begin{align}
-    \label{mom_U_p}
-    \mathbf{U}(t) = \frac{\mathbf{u}(0) + \alpha_{\rm p} \mathbf{U}(0) + \mathbf{g} t - \mathbf{u}_\text{g}}{1 + \alpha_{\rm p}} - \frac{\mathbf{u}_{\text{r}}(0)}{(1 + \beta_{\rm p} t)(1 + \alpha_{\rm p})}
-\end{align}
-Eq.\ (\ref{mom_U_p}) can be substituted into Eq.\ (\ref{ur_short}) to get the solution for $\mathbf{u}$.
-\begin{align}
-    \mathbf{u}(t) &= \mathbf{U}(t) + \frac{\mathbf{u}(0) - \mathbf{U}(0)}{1 + \beta_{\rm p} t} + \mathbf{u}_\text{g} \nonumber \\[.1in]
-    &= \frac{\mathbf{u}(0) + \alpha_{\rm p} \mathbf{U}(0) + \mathbf{g} t - \mathbf{u}_\text{g}}{1 + \alpha_{\rm p}} - \frac{\mathbf{u}(0) - \mathbf{U}(0)}{(1 + \beta_{\rm p} t)(1 + \alpha_{\rm p})} + \frac{\mathbf{u}(0) - \mathbf{U}(0)}{1 + \beta_{\rm p} t} + \mathbf{u}_\text{g} \nonumber \\[.1in]
-    &= \frac{\mathbf{u}(0)}{1 + \beta_{\rm p} t} + \frac{(\mathbf{u}(0) + \alpha_{\rm p} \mathbf{U}(0))\beta_{\rm p} t}{(1 + \beta_{\rm p} t)(1 + \alpha_{\rm p})} + \frac{\mathbf{g} t + \alpha_{\rm p} \mathbf{u}_\text{g}}{1 + \alpha_{\rm p}} \nonumber \\[.1in]
-    &= \frac{\mathbf{u}(0)}{1 + \beta_{\rm p} t} + \frac{(\mathbf{u}(0) + \alpha_{\rm p} \mathbf{U}(0))\beta_{\rm p} t}{(1 + \beta_{\rm p} t)(1 + \alpha_{\rm p})} + \mathbf{g} t - \frac{\alpha_{\rm p} \beta_{\rm p} t^2}{2 (1 + \alpha_{\rm p})} \left[\mathbf{u}_{\text{r}}(0) \left(\frac{\mathbf{u}_{\text{r}}(0) \cdot \mathbf{g}}{|\mathbf{u}_{\text{r}}(0)|^2}\right) + \mathbf{g}\right] + \mathit{O}(t^3) \label{mom_u_p_full}
-\end{align}
-Integrating Eq.~(\ref{mom_u_p_full}) leads to an equation for the particle positions,
-\begin{eqnarray}
-    \label{mom_x_p_full}
-    \mathbf{x}(t) = \mathbf{x}(0) + \left(\frac{\mathbf{u}(0) + \alpha_{\rm p} \mathbf{U}(0)}{1 + \alpha_{\rm p}}\right) t &-& \frac{\alpha_{\rm p} (\mathbf{u}(0) - \mathbf{U}(0))}{\beta_{\rm p} (1 + \alpha_{\rm p})} \text{ln}(\beta_{\rm p} t + 1) \nonumber \\[.1in]
-    &+& \frac{\mathbf{g} t^2}{2} - \frac{\alpha_{\rm p} \beta_{\rm p} t^3}{6 (1 + \alpha_{\rm p})} \left[\mathbf{u}_{\text{r}}(0) \left(\frac{\mathbf{u}_{\text{r}}(0) \cdot \mathbf{g}}{|\mathbf{u}_{\text{r}}(0)|^2}\right) + \mathbf{g}\right] + \mathit{O}(t^4)
-\end{eqnarray}
-
-\subsubsection*{Implementation in FDS}
-
-The following solutions are used to advance the particle positions forward in time by $\Delta t$ much like a normal finite-difference scheme. The exact solution is used for the case without drag.
-\begin{align}
-    \mathbf{u}^{n+1} &= \frac{\mathbf{u}^n}{1 + \beta_{\rm p} \Delta t} + \frac{(\mathbf{u}^n + \alpha_{\rm p} \mathbf{U}^n)\beta_{\rm p} \Delta t}{(1 + \beta_{\rm p} \Delta t)(1 + \alpha_{\rm p})} + \mathbf{g} \Delta t - \frac{\alpha_{\rm p} \beta_{\rm p} (\Delta t)^2}{2 (1 + \alpha_{\rm p})} \left[\mathbf{u}_\text{r}^n \left(\frac{\mathbf{u}_\text{r}^n \cdot \mathbf{g}}{|\mathbf{u}_\text{r}^n|^2}\right) + \mathbf{g}\right] \\[.1in]
-    \mathbf{x}^{n+1} &= \mathbf{x}^n + \left(\frac{\mathbf{u}^n + \alpha_{\rm p} \mathbf{U}^n}{1 + \alpha_{\rm p}}\right) \Delta t + \frac{\alpha_{\rm p} (\mathbf{u}^n - \mathbf{U}^n)}{\beta_{\rm p} (1 + \alpha_{\rm p})} \text{ln}(\beta_{\rm p} \Delta t + 1) + \frac{\mathbf{g} (\Delta t)^2}{2} \\[.1in]
-    \alpha_{\rm p} &\equiv \frac{\rho V_{\rm g}}{m_{\rm p} n_{\rm p}} \\[.1in]
-    \beta_{\rm p} &\equiv \frac{1}{2} \rho C_\text{d} A_\text{p} \left(\frac{1}{m_{\rm p}} + \frac{1}{M_{\rm p}} \right) |\mathbf{u}_{\text{r}}(0)|
-\end{align}
-At first glance, the theoretical accuracy of the original equation for $\mathbf{x}^{n+1}$, Eq.~(\ref{mom_x_p_full}), appears to be $\mathit{O}(\Delta t^3)$. But computation reveals it is actually $\mathit{O}(\Delta t^2)$. This is due to the velocity error reducing the overall accuracy of the position solution. The $(\Delta t)^3$ term, therefore, may be dropped from Eq.~(\ref{mom_x_p_full}) without loss of accuracy.
 
 
 
@@ -1484,7 +1497,7 @@ I_{\lambda}(\mathbf{x},\mathbf{s}) +\kappa_{\rm p}(\mathbf{x},\lambda) \; I_{{\r
 
 The burning rate of liquid pool fires depends in part on the convective and radiative heat feedback from the flames to the fuel surface. For large pool fires, radiation heat transfer dominates. Studies have been conducted to determine the spectra of emitted radiation~\cite{Suo-Anttila:PCT2009} as well as to characterize radiation absorption by gases within the flame~\cite{Wakatsuki:CST2008}. Depending on the fuel, thermal radiation can be absorbed at the surface or in depth. For fuels such as wood, most of the incident radiation is absorbed within a thin layer near the surface. For semi-transparent materials such as plastics or liquid fuels, thermal radiation may penetrate deeper. The in-depth radiation absorption by semi-transparent fuels has been studied for PMMA~\cite{Stoliarov:CF2009}, polymer films~\cite{Tsilingiris:ECM2003} and liquid pool fires~\cite{Suo-Anttila:PCT2009}. Most of the research related to the in-depth radiation absorption in liquids considers the boil-over of liquid pool fires on water~\cite{Broeckmann:JLPPI1995}. The effect of in-depth radiation absorption on evaporation of fuel droplets has also received some attention~\cite{Sazhin:IJHMT2004b}. Most liquids are highly selective absorbers, absorbing intensively in some wavelength regions while being transparent in others. This results in radiation transport models that are both computationally expensive and for which experimental data is scarce. In this appendix, we attempt to characterize the absorption of radiation by liquid fuels using effective absorption coefficients similar to those used in Refs.~\cite{Madhav:IJMP1995} and \cite{Manohar:JHT1995}.
 
-Where data on absorption coefficients of liquids exists in the open literature, such as the Coblentz Society data found on the NIST Chemistry WebBook~\cite{Coblentz:1}, it usually  only contains data for wavelengths from approximately \SI{2.5}{\micro m} upwards. A large part of the total energy in the emission spectrum of flames may easily be contained in wavelengths shorter than \SI{2.5}{\micro m}. However absorption spectra that begin from \SI{1}{\micro m} exists for a few liquids, including toluene~(\cite{Bertie:JMS2005}, \cite{Bertie:AS1994a}), methanol~\cite{Bertie:AS1993a}, benzene~\cite{Bertie:AS1993b} and water~\cite{Bertie:AS1996}. Furthermore, Ref.~\cite{Suo-Anttila:PCT2009} includes spectrally resolved transmission spectra of ethanol, heptane, JP-8, and an ethanol-toluene blend. Complex refractive index spectra for a few diesel fuels were reported in Ref.~\cite{Sazhin:IJHMT2004b}. Different diesel fuels have slightly different absorption spectra, due to differing additives. However the data reported in Ref.~\cite{Sazhin:IJHMT2004b} can perhaps be used to obtain an order of magnitude estimate for the absorption coefficient of diesel fuel.
+Where data on absorption coefficients of liquids exists in the open literature, such as the Coblentz Society data found on the NIST Chemistry WebBook~\cite{Coblentz:1}, it usually  only contains data for wavelengths from approximately \SI{2.5}{\micro m} upwards. A large part of the total energy in the emission spectrum of flames may easily be contained in wavelengths shorter than \SI{2.5}{\micro m}. However, absorption spectra that begin from \SI{1}{\micro m} exists for a few liquids, including toluene~(\cite{Bertie:JMS2005}, \cite{Bertie:AS1994a}), methanol~\cite{Bertie:AS1993a}, benzene~\cite{Bertie:AS1993b} and water~\cite{Bertie:AS1996}. Furthermore, Ref.~\cite{Suo-Anttila:PCT2009} includes spectrally resolved transmission spectra of ethanol, heptane, JP-8, and an ethanol-toluene blend. Complex refractive index spectra for a few diesel fuels were reported in Ref.~\cite{Sazhin:IJHMT2004b}. Different diesel fuels have slightly different absorption spectra, due to differing additives. However, the data reported in Ref.~\cite{Sazhin:IJHMT2004b} can perhaps be used to obtain an order of magnitude estimate for the absorption coefficient of diesel fuel.
 
 Often we are not interested in resolving the spectra of the transmitted radiation; rather, we are interested in modeling the total transmitted radiation. In these cases, it is convenient to write the radiation transport equations in terms of mean absorption coefficients. This is done to avoid the time-consuming integrations over all wavelengths. For this reason, a number of mean absorption coefficients have been introduced, such as the Rosselland-mean absorption coefficient and the Planck-mean absorption coefficient. These correspond to the optically-thin approximation and the Rosselland diffusion approximation of radiation transport. The absorption coefficients of liquids are highly wavelength dependent and are even transparent in some areas. In this case, the Planck-mean absorption coefficients are too large by several orders of magnitude. It is preferable to determine an effective absorption coefficient that attempts to replicate the absorption of radiation over a certain path length over which the majority of the radiation is absorbed.
 
@@ -1520,118 +1533,117 @@ Benzene \cite{Bertie:AS1993b}                       &  11.5-6200                
 The 1-D heat conduction equation in Cartesian coordinates is:
 \begin{equation}
 \label{heat_cond_cart}
-     \rho_s c_s \frac{\partial T_s}{\partial t} = \frac{\partial}{\partial x} \left( k_s \frac{\partial T_s}{\partial x} \right) + \dot{q}'''_s
+     \rho_{\rm s} c_{\rm s} \frac{\partial T_{\rm s}}{\partial t} = \frac{\partial}{\partial x} \left( k_{\rm s} \frac{\partial T_{\rm s}}{\partial x} \right) + \dot{q}'''_{\rm s}
 \end{equation}
 In cylindrical and spherical coordinates, the equation becomes:
 \begin{equation}
 \label{heat_cond_cyl2}
-     \rho_s c_s \frac{\partial T_s}{\partial t} = \frac{1}{r^I}\frac{\partial}{\partial r} \left( r^I k_s \frac{\partial T_s}{\partial r} \right) + \dot{q}'''_s
+     \rho_{\rm s} c_{\rm s} \frac{\partial T_{\rm s}}{\partial t} = \frac{1}{r^I}\frac{\partial}{\partial r} \left( r^I k_{\rm s} \frac{\partial T_{\rm s}}{\partial r} \right) + \dot{q}'''_{\rm s}
 \end{equation}
-where $I$ is 1 for cylindrical and 2 for spherical coordinates. Since for $I=0$, the Cartesian formulation is recovered, from this point on we will consider the general form of the equation~(\ref{heat_cond_cyl2}). The indexing system used for the discretization of the equations is shown in Fig.~\ref{fig_solid_nodes}.
+where $I$ is 1 for cylindrical and 2 for spherical coordinates. Since for $I=0$, the Cartesian formulation is recovered, from this point on we will consider the general form of the equation~(\ref{heat_cond_cyl2}). The indexing system used for the discretization of the equations is shown in Fig.~\ref{fig_solid_nodes}. The discretization scheme is the same regardless of whether the coordinate system is Cartesian, cylindrical, or spherical. The size of the cell nearest the boundary is set by default to be
+\be
+\label{eq:dx1dcond}
+   x_1-x_0 = \sqrt{\frac{ \dt_0 \; k_{\rm s}}{\rho_{\rm s} \, c_{\rm s}}}
+\ee
+where $\dt_0$ is a somewhat arbitrary time scale set to 1. In other words, the Fourier number based on the cell size is assumed of order unity. The user has flexibility in changing both the initial cell size and the degree of stretching.
+
 
 \begin{figure}[t]
-    \centering
-   \begin{tikzpicture}[font = \large]
-    \node at (-2.0,2.5) [label=above:Front] {};
-    \node at (4.5,2.5) [label=above:Back] {};
-
-    \node at (-2.5,0) [label=below:$x(0)$] {};
-    \node at (0,0) [label=below:$x(1)$] {};
-    \node at (2.5,0) [label=below:$x(N-1)$] {};
-    \node at (5,0) [label=below:$x(N)$] {};
-
-    \node at (-3.75,0) [label={above:$i = 0$}] {};
-    \node at (-1.25,0) [label={above:$i = 1$}] {};
-    \node at (1.25,0) [label=above:...] {};
-    \node at (3.75,0) [label={above:$i = N$}] {};
-    \node at (6.25,0) [label={above:$i = N+1$}] {};
-
-    \node at (1.25,3.5) [label=above: Virtual Nodes] {};
-    \draw [<-,line width=2pt] (6.25,2.75) arc (0:30:25 and 2.5);
-    \draw [<-,line width=2pt] (-3.75,2.75) arc (180:150:25 and 2.5);
-
-    \draw [dashed, line width=1.5pt] (-2.5,0) -- (-5,0);
-    \draw [dashed, line width=1.5pt] (-5,0) -- (-5,2.5);
-    \draw [dashed, line width=1.5pt] (-2.5,2.5) -- (-5,2.5);
-   \draw [line width=1.5pt] (-2.5,0) rectangle (0,2.5);
-   \draw [line width=1.5pt] (0,0) rectangle (2.5,2.5);
-    \draw [line width=1.5pt] (2.5,0) rectangle (5,2.5);
-    \draw [dashed, line width=1.5pt] (5,0) -- (7.5,0);
-    \draw [dashed, line width=1.5pt] (7.5,0) -- (7.5,2.5);
-    \draw [dashed, line width=1.5pt] (5,2.5) -- (7.5,2.5);
-
-    \draw [->,line width=2pt] (5,-1.1) -- (1.25,-1.1);
-    \node at (2.5,-1.1) [label=below:$r_{i}$] {};
-   \end{tikzpicture}
-    \caption[Solid phase nodes and indexes]{Solid phase nodes and indexes. $r$ is the radius from the back of the material.}
-    \label{fig_solid_nodes}
+\setlength{\unitlength}{.9in}
+\begin{picture}(6.5,1.75)
+\put(0,0){\framebox(1,1){Gas Cell}}
+\put(1.00,0){\framebox(0.10,1){1}}
+\put(1.10,0){\framebox(0.20,1){2}}
+\put(1.30,0){\framebox(0.40,1){3}}
+\put(1.70,0){\framebox(0.80,1){$T_{\rm s,4}$}}
+\put(2.50,0){\framebox(1.60,1){$T_{\rm s,5}$}}
+\put(4.10,0){\framebox(1.60,1){$T_{\rm s,6}$}}
+\put(5.70,0){\framebox(0.80,1){$T_{\rm s,7}$}}
+\put(6.50,0){\framebox(0.40,1){8}}
+\put(6.90,0){\framebox(0.20,1){9}}
+\put(7.10,0){\framebox(0.10,1){\parbox[c]{.1in}{1\\0}}}
+\put(1.00,1){\line(-1,1){0.55}}
+\put(1.10,1){\line( 0,1){0.45}}
+\put(1.30,1){\line( 1,1){0.25}}
+\put(7.20,1){\line( 0,1){0.25}}
+\put(0.00,1.75){\parbox[c]{1in}{$x=x_0\equiv 0$ \\ $r=r_0\equiv R$}}
+\put(0.90,1.55){$x_1$, $r_1$}
+\put(1.50,1.35){$x_2$, $r_2$}
+\put(6.75,1.35){$x_{10}$, $r_{10}$}
+\end{picture}
+\caption[Layout of solid phase cells]{Layout of solid phase cells. In this example, each solid phase cell is stretched by a factor of 2 until the halfway point of the solid is reached, after which the cells shrink by a factor of 2. The interface between gas and solid phase is at $x_0=R-r_0$, where $R$ is the radius of cylinder or sphere. The back side boundary condition is applied at $x_{10}=R-r_{10}$. ``Virtual'' cells 0 and $N+1=11$ are located to the left and right of the solid, and are the same size as cells 1 and $N=10$.}
+\label{fig_solid_nodes}
 \end{figure}
 
 The temperature at the center of each solid cell, $T_{s,i}$, is updated in time using a Crank-Nicolson scheme:
+
 \begin{align}
 \label{crank-nicolson}
-(\rho_s \, c_s)_i \frac{T_{s,i}^{n+1}-T_{s,i}^{n}}{\delta t}
-& = \frac{1}{2 \, r_{c,i}^I \, \delta r_i} \left( r_{i}^{I} \, k_{s,i+\frac{1}{2}} \frac{T_{s,i+1}^{n}-T_{s,i}^{n}}{\delta r_{i+\frac{1}{2}}} - r_{i-1}^{I} \, k_{s,i-\frac{1}{2}} \frac{T_{s,i}^{n}-T_{s,i-1}^{n}}{\delta r_{i-\frac{1}{2}}} \right) \notag \\[0.1in]
-& +\frac{1}{2 \, r_{c,i}^I \, \delta r_i} \left( r_{i}^{I} \, k_{s,i+\frac{1}{2}} \frac{T_{s,i+1}^{n+1}-T_{s,i}^{n+1}}{\delta r_{i+\frac{1}{2}}} - r_{i-1}^{I} \, k_{s,i-\frac{1}{2}} \frac{T_{s,i}^{n+1}-T_{s,i-1}^{n+1}}{\delta r_{i-\frac{1}{2}}} \right) + \dot{q}'''_s
+(\rho_{\rm s} \, c_{\rm s})_i \frac{T_{{\rm s},i}^{n+1}-T_{{\rm s},i}^{n}}{\delta t}
+& = \frac{1}{2 \, r_{c,i}^I \, \delta r_i} \left( r_{i}^{I} \, k_{{\rm s},i+\frac{1}{2}} \frac{T_{{\rm s},i+1}^{n}-T_{{\rm s},i}^{n}}{\delta r_{i+\frac{1}{2}}} - r_{i-1}^{I} \, k_{{\rm s},i-\frac{1}{2}} \frac{T_{{\rm s},i}^{n}-T_{{\rm s},i-1}^{n}}{\delta r_{i-\frac{1}{2}}} \right) \notag \\[0.1in]
+& +\frac{1}{2 \, r_{c,i}^I \, \delta r_i} \left( r_{i}^{I} \, k_{{\rm s},i+\frac{1}{2}} \frac{T_{{\rm s},i+1}^{n+1}-T_{{\rm s},i}^{n+1}}{\delta r_{i+\frac{1}{2}}} - r_{i-1}^{I} \, k_{{\rm s},i-\frac{1}{2}} \frac{T_{{\rm s},i}^{n+1}-T_{{\rm s},i-1}^{n+1}}{\delta r_{i-\frac{1}{2}}} \right) + \dot{q}'''_{{\rm s},i}
 \end{align}
-$k_{i+\frac{1}{2}}$ is the thermal conductivity at the border of the cells $i$ and $i+1$, $\delta r_i$ is the width of cell $i$, and  $\delta r_{i+\frac{1}{2}}$ is the distance from the center of cell $i$ to the center of cell $i+1$. The radial coordinate, $r_{c,i}$, denotes the cell center:
+$k_{{\rm s},i+\frac{1}{2}}$ is the thermal conductivity at the border of the cells $i$ and $i+1$, $\delta r_i$ is the width of cell $i$, and  $\delta r_{i+\frac{1}{2}}$ is the distance from the center of cell $i$ to the center of cell $i+1$. The radial coordinate, $r_{c,i}$, denotes the cell center:
 \begin{equation}
 r_{c,i}^I = \left\{
 \begin{array}{ll} (r_i^2 - r_{i-1}^2)/(2 \, \delta r_i)            & I=1 \quad \hbox{(cylindrical)} \\ [0.1in]
                    \sqrt{ ( r_i^3 - r_{i-1}^3)/(3 \, \delta r_i) } & I=2 \quad \hbox{(spherical)}
 \end{array} \right.
 \end{equation}
-The temperatures at the front and back surface of a Cartesian slab (or center of a cylinder or sphere) are determined from the boundary conditions. In any of the coordinate systems, the boundary condition at the front surface is
+The temperatures at the front and back surface of a Cartesian slab (or center of a cylinder or sphere) are determined from the boundary conditions. In any of the coordinate systems, the boundary condition at the front surface, using the Crank-Nicholson scheme, is
 \begin{equation}
 \label{bc_front}
- -k_{s,1} \frac{T_{s,1}^{n+1}-T_{s,0}^{n+1}}{\delta r_{\frac{1}{2}}}
-  =  \dot{q}_{c}''+\dot{q}_{r}''
+ \frac{-k_{\rm s,1}}{2} \left( \frac{T_{\rm s,1}^{n+1}-T_{\rm s,0}^{n+1}}{\delta r_{\frac{1}{2}}} + \frac{T_{\rm s,1}^{n}-T_{\rm s,0}^{n}}{\delta r_{\frac{1}{2}}} \right)
+  =  \left( \dot{q}_{\rm c}''+\dot{q}_{\rm r}'' \right)^{n+\frac{1}{2}}
 \end{equation}
-Note that $T_{s,0}$ does not represent the gas temperature, but rather it is used to establish the temperature gradient at the surface. Note also that the thermal conductivity is that of the first node. The convective heat flux is
+Note that $T_{\rm s,0}$ does not represent the gas temperature, but rather it is used to establish the temperature gradient at the surface. Note also that the thermal conductivity, $k_{\rm s,1}$, is that of the first node. The convective heat flux at the mid-point of the time step is
 \begin{equation}
 \label{conv}
-  \dot{q}_c'' = h \, \left( T_g - \frac{1}{2} \left( T_{s,\frac{1}{2}}^n+T_{s,\frac{1}{2}}^{n+1} \right) \right)
+  \left( \dot{q}_{\rm c}'' \right)^{n+\frac{1}{2}} = \frac{1}{2} \left( h^n \left(T_{\rm g}^n - T_{\rm s,\frac{1}{2}}^n\right) + h^{n+1} \left(T_{\rm g}^{n+1} - T_{\rm s,\frac{1}{2}}^{n+1} \right) \right)
 \end{equation}
-where $T_g$ is the gas temperature in the first grid cell abutting the surface, and $T_{s,\frac{1}{2}}$ is the surface temperature, defined as the average of $T_{s,0})$ and $T_{s,1})$.
-$(T^{n+1})^4$ can be approximated using a Taylor series expansion:
-\begin{equation}
-\label{T_taylor}
-(T^{n+1})^4 \approx (T^n)^4 + 4 \, (T^n)^3 (T^{n+1}-T^n)
-\end{equation}
-which leads to approximation for the radiative flux
+where $T_{\rm g}^n$ and $T_{\rm g}^{n+1}$ are the gas temperatures in the first grid cell abutting the surface at the start and end of the time step, $T_{\rm s,\frac{1}{2}}$ is the surface temperature, defined as the average of $T_{\rm s,0}$ and $T_{\rm s,1}$, and $h^n$ and $h^{n+1}$ are the convective heat transfer coefficients at the start and end of the time step. The radiative heat flux can be estimated at the mid-point of the time step:
 \begin{equation}
 \label{radi}
-\dot{q}_r'' = \dot{q}_{r, in}'' - \epsilon \sigma \, \left( T_{s,\frac{1}{2}}^{n+1} \right)^4
-  \approx \dot{q}_{r, in}'' - \epsilon \sigma \, \left( T_{s,\frac{1}{2}}^n \right)^4 - 4 \, \epsilon\sigma \, \left( T_{s,\frac{1}{2}}^n \right)^3 \, \left( T_{s,\frac{1}{2}}^{n+1}-T_{s,\frac{1}{2}}^n \right)
+\left( \dot{q}_{\rm r}'' \right)^{n+\frac{1}{2}} = \dot{q}_{\rm r, in}'' - \epsilon \sigma \, \left( T_{\rm s,\frac{1}{2}}^{n+\frac{1}{2}} \right)^4
+  \approx \dot{q}_{\rm r, in}'' - \epsilon \sigma \, \left( T_{\rm s,\frac{1}{2}}^n \right)^4 - 2 \, \epsilon\sigma \, \left( T_{\rm s,\frac{1}{2}}^n \right)^3 \, \left( T_{\rm s,\frac{1}{2}}^{n+1}-T_{\rm s,\frac{1}{2}}^n \right)
+\end{equation}
+Note the use of Taylor series expansion:
+\begin{equation}
+\label{T_taylor}
+(T^{n+1/2})^4 \approx (T^n)^4 + 2 \, (T^n)^3 (T^{n+1}-T^n)
 \end{equation}
 Now the front boundary condition is
-\begin{equation}
+\begin{eqnarray}
 \label{bc_front_2}
-  -k_{s,1} \frac{T_{s,1}^{n+1}-T_{s,0}^{n+1}}{\delta r_{\frac{1}{2}}}
-  \approx h \, \left( T_g - \frac{1}{2} \left( T_{s,\frac{1}{2}}^n+T_{s,\frac{1}{2}}^{n+1} \right) \right) +
-  \dot{q}_{r, in}'' - 4 \, \epsilon\sigma \, \left(T_{s,\frac{1}{2}}^n \right)^3 \, T_{s,\frac{1}{2}}^{n+1} + 3 \, \epsilon\sigma \, \left( T_{s,\frac{1}{2}}^n \right)^4
-\end{equation}
+  -k_{\rm s,1} \frac{T_{\rm s,1}^{n+1}-T_{\rm s,0}^{n+1} + T_{\rm s,1}^{n}-T_{\rm s,0}^{n}}{2 \delta r_{\frac{1}{2}}}
+  &\approx& \frac{1}{2} \left( h^n \left(T_{\rm g}^n - T_{\rm s,\frac{1}{2}}^n\right) + h^{n+1} \left(T_{\rm g}^{n+1} - T_{\rm s,\frac{1}{2}}^{n+1} \right) \right) \nonumber \\ &+&
+  \dot{q}_{\rm r, in}'' - 2 \, \epsilon\sigma \, \left(T_{\rm s,\frac{1}{2}}^n \right)^3 \, T_{\rm s,\frac{1}{2}}^{n+1} +  \epsilon\sigma \, \left( T_{\rm s,\frac{1}{2}}^n \right)^4
+\end{eqnarray}
 The wall surface temperature is defined:
 \begin{equation}
 \label{T_front}
-  T_{s,\frac{1}{2}} = \frac{T_{s,1}+T_{s,0}}{2}
+  T_{\rm s,\frac{1}{2}} = \frac{T_{\rm s,1}+T_{\rm s,0}}{2}
+\end{equation}
+and the temperature gradient at the start of the time step is:
+\begin{equation}
+k_{\rm s,1} \frac{T_{\rm s,1}^{n}-T_{\rm s,0}^{n}}{2 \delta r_{\frac{1}{2}}} = -\frac{h^n}{2} \, \left( T_{\rm g}^n - T_{\rm s,\frac{1}{2}}^n \right) - \frac{1}{2} \left( \dot{q}_{\rm r, in}'' - \epsilon \sigma \, \left( T_{\rm s,\frac{1}{2}}^{n} \right)^4 \right)
 \end{equation}
 and therefore the boundary condition becomes
 \begin{equation}
 \label{bc_front_4}
-  -k_{s,1} \frac{T_{s,1}^{n+1}-T_{s,0}^{n+1}}{\delta r_{\frac{1}{2}}} + \left( \frac{h}{2} + 4 \, \epsilon\sigma \, \left( T_{s,\frac{1}{2}}^n \right)^3 \right) \frac{T_{s,1}^{n+1}+T_{s,0}^{n+1}}{2}
-  \approx h\, \left( T_g - \frac{1}{2}T_{s,\frac{1}{2}}^n \right) +
-  \dot{q}_{r, in}'' + 3 \, \epsilon\sigma \, \left( T_{s,\frac{1}{2}}^n \right)^4
+  -k_{\rm s,1} \frac{T_{\rm s,1}^{n+1}-T_{\rm s,0}^{n+1}}{2 \delta r_{\frac{1}{2}}} + \left( \frac{h^{n+1}}{2} + 2 \, \epsilon\sigma \, \left( T_{\rm s,\frac{1}{2}}^n \right)^3 \right) \frac{T_{\rm s,1}^{n+1}+T_{\rm s,0}^{n+1}}{2}
+  \approx  \frac{1}{2} \left( h^{n+1} \, T_{\rm g}^{n+1} +
+  \dot{q}_{\rm r, in}'' \right) + \frac{3}{2} \, \epsilon\sigma \, \left( T_{\rm s,\frac{1}{2}}^n \right)^4
 \end{equation}
 Rearranging terms, the temperature at node 0 becomes:
 \begin{equation}
 \label{T0}
-  T_{s,0}^{n+1} = \underbrace{\frac{\frac{k_{s,1}}{\delta r_{\frac{1}{2}}}- \left(\frac{1}{4}h+2\epsilon \sigma \left(T_{s,\frac{1}{2}}^n\right)^3 \right)}{\frac{k_{s,1}}{\delta r_{\frac{1}{2}}} + \left(\frac{1}{4}h+2\epsilon \sigma \left( T_{s,\frac{1}{2}}^n\right)^3 \right)}}_\textct{RFACF2} T_{s,1}^{n+1} +
- \underbrace{\frac{h \left(T_g-\frac{1}{2}T_{s,\frac{1}{2}}^n\right)+\dot{q}_{r,in}''+3\epsilon \sigma \left( T_{s,\frac{1}{2}}^n\right)^4}{\frac{k_{s,1}}{\delta r_{\frac{1}{2}}}+\left(\frac{1}{4}h+2\epsilon \sigma \left( T_{s,\frac{1}{2}}^n\right)^3 \right)}}_\textct{QDXKF}
+  T_{\rm s,0}^{n+1} = \underbrace{\frac{\frac{k_{\rm s,1}}{\delta r_{\frac{1}{2}}}- \left(\frac{h^{n+1}}{2} + 2 \epsilon \sigma \left(T_{\rm s,\frac{1}{2}}^n\right)^3 \right)}{\frac{k_{\rm s,1}}{\delta r_{\frac{1}{2}}} + \left(\frac{h^{n+1}}{2} + 2 \epsilon \sigma \left( T_{\rm s,\frac{1}{2}}^n\right)^3 \right)}}_\textct{RFACF2} T_{\rm s,1}^{n+1} +
+ \underbrace{ \frac{  h^{n+1} \, T_{\rm g}^{n+1} + \dot{q}_{\rm r,in}'' + 3 \epsilon \sigma \left( T_{\rm s,\frac{1}{2}}^n\right)^4 }{\frac{k_{\rm s,1}}{\delta r_{\frac{1}{2}}}+\left(\frac{h^{n+1}}{2} + 2 \epsilon \sigma \left( T_{\rm s,\frac{1}{2}}^n\right)^3 \right)} }_\textct{QDXKF}
 \end{equation}
 Note that \textct{RFACF2} and similar names are used in the actual source code to represent these quantities.
 In case of non-insulated backing in Cartesian geometry, the temperature of virtual node $N+1$ is calculated the same way.
-For a Cartesian geometry with an insulated backing or for cylindrical and spherical geometries, $\epsilon$, $\dot{q}_{r,in}''$, and $h$ are set to 0.
+For a Cartesian geometry with an insulated backing or for cylindrical and spherical geometries, $\epsilon$, $\dot{q}_{\rm r,in}''$, and $h$ are set to 0.
 
 After re-arranging the terms, Eq.~(\ref{crank-nicolson}) becomes (using the nomenclature of the source code) for each wall cell $i$:
  \begin{equation}
@@ -1644,7 +1656,7 @@ where
 \begin{split}
 & A_i = -\frac{k_{i+\frac{1}{2}} \, \delta t}{2(\rho_s c_s)_i} \; \frac{1}{r_{c,i}^I \delta r_i} \; \frac{r_{i}^I}{\delta r_{i+\frac{1}{2}}}  \\
 & B_i = -\frac{k_{i-\frac{1}{2}} \, \delta t}{2(\rho_s c_s)_i} \; \frac{1}{r_{c,i}^I \delta r_i} \; \frac{r_{i-1}^I}{\delta r_{i-\frac{1}{2}}}   \\
-& C_i = T_{s,i}^{n}-A_i \, (T_{i+1}^n-T_i^n) + B_i \, (T_{i}^n-T_{i-1}^n)  \\
+& C_i = T_{s,i}^{n}-A_i \, (T_{i+1}^n-T_i^n) + B_i \, (T_{i}^n-T_{i-1}^n) + \dt \, \dot{q}_{s,i}'''/(\rho_s c_s)_i \\
 & D_i = 1-A_i-B_i
 \end{split}
 \end{equation}
@@ -1666,3 +1678,96 @@ To solve Eq.~(\ref{tridiagonal_1}), a tri-diagonal linear solver is used:
 & T^{n+1}_{s,i} = \frac{C_i - A_i \; C_{i+1}}{D_i} \quad i = N-1,..., 1
 \end{split}
 \end{equation}
+
+Typically, the time step, $\dt$, used by the solid phase solver is some multiple of the time step used by the gas phase solver. By default, the multiple is 2, but the user can select a different value if need be. However, there may be times during the simulation where the solid phase time step must be smaller than the gas phase time step due to potentially large, short-lived excursions of the internal heat source term, $\dq_{\rm s}'''$, which is not included in the implicit Crank-Nicolson scheme. It is simply evaluated at the start of the time step. To remedy this problem, after the heat source term has been evaluated, the maximum temperature change is estimated using an explicit, first order update:
+\begin{equation}
+  \Delta T_{\rm s}^* \equiv \max_{i=1,N} \left| \frac{\dt}{(\rho_{\rm s} c_{\rm s})_i} \left[ \frac{1}{r_{c,i}^I \delta r_i} \left( r_{i}^I k_{i+\frac{1}{2}} \frac{T_{{\rm s},i+1}^n-T_{{\rm s},i}^n)}{\delta r_{i+\frac{1}{2}}} - r_{i-1}^I k_{{\rm s},i+\frac{1}{2}} \frac{T_{{\rm s},i}^n-T_{{\rm s},i-1}^n}{\delta r_{i-\frac{1}{2}}} \right) + \dot{q}_{{\rm s},i}''' \right] \right|
+\end{equation}
+If $\Delta T_{\rm s}^*$ exceeds a user-specified threshold, $\Delta T_{\max}$, the time step is reduced below the gas phase time step, $\dt_{\rm gas}$:
+\begin{equation}
+   \dt = \dt_{\rm gas} \, 2^{-\lceil \ln \eta / \ln 2 \rceil }  \quad ; \quad \eta = \Delta T_{s}^*  / \Delta T_{\max}
+\end{equation}
+Note that $\lceil x \rceil$ denotes the least integer greater than $x$. To prevent an endless spiral of decreasing solid phase time steps, there is a user-specified limit of the number of subdivisions of the gas phase time step. The default is $2^2=4$.
+
+\chapter{Development of an Implicit Solution for Droplet Evaporation}
+\label{app_drop_evaporation}
+
+In this appendix, we consider evaporation of a single drop in a computational cell away from the wall.  Hence, our goal is to develop a solution for (a) the cell water vapor mass fraction $Y_{\rm \alpha, g}$, (b) the cell gas phase temperature $T_{\rm g}$, (c) the temperature of the droplet $T_{\rm p}$, and (d) if present an estimate of the first node of a solid surface $T_{\rm w}$.
+
+The ODEs to be integrated are, respectively, the droplet mass, the change in cell water vapor mass fraction, the change in the droplet temperature, the change in the cell gas phase temperature, and the wall temperature~\cite{Cheremisinoff:1}:
+\begin{align}
+\frac{\d m_{\rm p}}{\d t} & = - A_{\rm p,s} \, h_{\rm m} \, \rho_{\rm f} \, (Y_{\alpha,\ell} - Y_{\rm \alpha, g}) \label{app_droplet_mass} \\[0.2in]
+\rho_{\rm g} V \frac{\d Y_{\rm \alpha, g}}{\d t} & = -\left(1-Y_{\rm \alpha, g}\right)\frac{\d m_{\rm p}}{\d t}  \label{app_droplet_gas_fraction} \\[0.2in]
+\frac{\d T_{\rm p}}{\d t} & = \frac{1}{m_{\rm p} \, c_{\rm p}}  \left[ \dq_{\rm r} + A_{\rm p,s} \, h_{\rm g}  \, (T_{\rm g}-T_{\rm p}) + A_{\rm p,s} \, h_{\rm w}  \, (T_{\rm w}-T_{\rm p}) + \frac{\d m_{\rm p}}{\d t} \; h_{\rm v} \right]  \label{app_droplet_temp}  \\[0.2in]
+\frac{\d T_{\rm g}}{\d t} & = \frac{1}{m_{\rm g} \, c_{\rm g}}  \left[A_{\rm p,s} \, h_{\rm g}  \, (T_{\rm p}-T_{\rm g}) - \frac{\d m_{\rm p}}{\d t} \; (h_{\rm \alpha,p}-h_{\rm \alpha,g}) \right]  \label{app_droplet_gas_temp}   \\[0.2in]
+\frac{\d T_{\rm w}}{\d t} & = -\frac{A_{\rm p,s} \, h_{\rm w}}{m_{\rm w} \, c_{\rm w}} (T_{\rm w}-T_{\rm p})  \label{app_droplet_solid_temp}
+\end{align}
+
+	Below we will consider the time integration for a single substep in the evaporation routine, which updates the local computational cell from time $t^n$ to $t^n + \Delta t^n$.  Usually, $\Delta t^n = \Delta t_{\mathrm{\tiny LES}}$.  However, it is possible that subtimesteps may be required to prevent spurious mass and temperature overshoots.  In what follows, unless otherwise specified RHS quantities are evaluated at the beginning of the substep, $t^n$ (hence the designation ``semi-implicit'' method).  This limits the stability range of the method (since the method is not fully implicit it is not unconditionally stable), but it greatly simplifies the solution procedure.
+
+To begin the development, we expanded Eq.~(\ref{app_droplet_gas_fraction}) with the mass loss rate (to be determined) evaluated at the midpoint of the time interval:
+\begin{equation}
+\label{eqn_imp_Ynp_2}
+Y_{\rm \alpha, g}^{n+1}=Y_{\rm \alpha, g}^n-\frac{\Delta t^n}{\rho_{\rm g} V} (1-Y_{\rm \alpha, g}) \left(\frac{\d m_{\rm p}}{\d t}\right)^{n+\frac{1}{2}}
+\end{equation}
+Substituting Eq.~\ref{eqn_imp_Ynp_2} into a Crank-Nicolson expansion of Eq.~(\ref{app_droplet_mass}) we have
+\begin{align}
+\label{eqn_imp_dmdt_2}
+\left(\frac{\d m_{\rm p}}{\d t} \right)^{n+\frac{1}{2}} &= -\frac{A_{\rm p,s} h_{\rm m}\rho_{\rm f}}{2} \Big(Y_{\alpha,\ell}^{n+1}+Y_{\alpha,\ell}^n-Y_{\rm \alpha, g}^{n+1}-Y_{\rm \alpha, g}^n \Big) \notag \\[.5em]
+&= -\frac{A_{\rm p,s} h_{\rm m} \rho_{\rm f}}{2} \Big(Y_{\alpha,\ell}^{n+1}+Y_{\alpha,\ell}^n+\frac{\Delta t^n}{\rho_{\rm g} V} (1-Y_{\rm \alpha, g}) \left(\frac{\d m_{\rm p}}{\d t}\right)-2Y_{\rm \alpha, g}^n \Big) \notag \\[.5em]
+&=-\frac{A_{\rm p,s} h_{\rm m} \rho_{\rm f}}{2} \left[\frac{Y^{n+1}_{\alpha,\ell}+Y^n_{\alpha,\ell}-2Y^n_{\rm \alpha, g}}{1+\frac{\Delta t^n A_{\rm p,s} h_{\rm m}(1-Y_{\rm \alpha, g})}{2 \rho_{\rm g} V}}\right]
+\end{align}
+
+Next, we find an approximation for the droplet surface equilibrium mass fraction $Y_{\alpha,\ell}^{n+1}$ via the expansion
+\begin{equation}
+\label{eqn_Yl_expansion}
+Y_{\alpha,\ell}^{n+1} = Y_{\alpha,\ell}^n + \left(\frac{\d Y_{\alpha,\ell}}{\d T}\right) (T_{\rm p}^{n+1} - T_{\rm p}^n)
+\end{equation}
+
+The derivative is determined from a chain rule expansion:
+\begin{equation}
+\label{eqn_dYldY_chainrule}
+\left(\frac{\d Y_{\alpha,\ell}}{\d T}\right) = \left(\frac{\d Y_{\alpha,\ell}}{\d X_{\alpha,\ell}}\right) \left(\frac{\d X_{\alpha,\ell}}{\d T}\right)
+\end{equation}
+
+The water vapor mole fraction on the surface of the droplet is determined from the Clausius-Clapeyron equation:
+\begin{equation}
+\label{app_Clausius_Clapeyron}
+X_{\alpha,\ell} = \exp \left[ \frac{h_v W_{\alpha}}{R} \left(\frac{1}{T_b} - \frac{1}{T_p}\right) \right]
+\end{equation}
+For a binary mixture in air, the relationship between the vapor mass and mole fractions is given by
+\begin{equation}
+\label{eqn_YX}
+Y_{\alpha,\ell} = \frac{X_{\alpha,\ell}}{X_{\alpha,\ell}(1-W_a/W_{\alpha}) + W_a/W_{\alpha}}
+\end{equation}
+
+Differentiating Eqs.~(\ref{app_Clausius_Clapeyron}) and (\ref{eqn_YX}) and substituting into (\ref{eqn_dYldY_chainrule}) yields
+\begin{equation}
+\label{eqn_dYldY_2}
+\left(\frac{\d Y_{\alpha,\ell}}{\d T}\right)=\frac{W_a / W_{\alpha}} {\left( X_{\alpha,\ell}(1-W_a/W_{\alpha})+(W_a/W_{\alpha}) \right)^2} \;\frac{h_v W_{\alpha}} {R T^2_{\rm p}} \exp\left[ \frac{h_v W_{\alpha}} {R} \left(\frac{1}{T_b} - \frac{1}{T_{\rm p}}\right)\right]
+\end{equation}
+
+Using (\ref{eqn_dYldY_2}) in (\ref{eqn_Yl_expansion}), subsequently (\ref{eqn_Yl_expansion}) in (\ref{eqn_imp_dmdt_2}), and then (\ref{eqn_imp_dmdt_2}) in (\ref{app_droplet_temp}) and (\ref{app_droplet_gas_temp}), leaves three equations with three unknowns, $T^{n+1}_{\rm p}$, $T^{n+1}_{\rm g}$,  and $T^{n+1}_{\rm w}$, to be solved simultaneously. As previously noted, unless otherwise indicated, all RHS quantities are evaluated at the beginning of the substep, $t^n$.
+
+\begin{eqnarray}
+\nonumber T_{\rm p}^{n+1} &=& T_{\rm p}^n + \frac{\Delta t^n}{m_{\rm p} \, c_{\rm p}}  \left[ \dq_{\rm r} + \frac{ A_{\rm p,s} \, h_{\rm g}}{2}  \, (T_{\rm g}^{n+1}+T_{\rm g}^n-T_{\rm p}^{n+1}-T_{\rm p}^n) \right. \\
+&+& \left. \frac{A_{\rm p,s} \, h_{\rm w}}{2}  \, (T_{\rm w}^{n+1}+T_{\rm w}^n-T_{\rm p}^{n+1}-T_{\rm p}^n) -\frac{A_{\rm p,s} h_{\rm m} \rho_{\rm f}}{2} \left[\frac{Y^{n+1}_{\alpha,\ell}+Y^n_{\alpha,\ell}-2Y^n_{\rm \alpha, g}}{1+\frac{\Delta t^n A_{\rm p,s} h_{\rm m}(1-Y_{\rm \alpha, g})}{2 \rho_{\rm g} V}}\right] \; h_{\rm v} \right]
+\label{eqn_imp_dTpdtx_2}
+\end{eqnarray}
+\begin{eqnarray}
+\nonumber T_{\rm g}^{n+1} &=& T_{\rm g}^n + \frac{\Delta t^n}{m_{\rm g} \, c_{\rm g}} \left[ \frac{A_{\rm p,s} \, h_{\rm g}}{2}  \, (T_{\rm p}^{n+1}+T_{\rm p}^n-T_{\rm g}^{n+1}-T_{\rm g}^n) \right. \\
+&+& \left. \frac{A_{\rm p,s} h_{\rm m} \rho_{\rm f}}{2} \left[\frac{Y^{n+1}_{\alpha,\ell}+Y^n_{\alpha,\ell}-2Y^n_{\rm \alpha, g}}{1+\frac{\Delta t^n A_{\rm p,s} h_{\rm m}(1-Y_{\rm \alpha, g})}{2 \rho_{\rm g} V}}\right] \; (h_{\rm \alpha,p}-h_{\rm \alpha,g}) \right]
+\label{eqn_imp_dTgdTx_2}
+\end{eqnarray}
+\begin{equation}
+T_{\rm w}^{n+1} = T_{\rm w}^n-\frac{\Delta t^n A_{\rm p,s} \, h_{\rm w}}{2 m_{\rm w} \, c_{\rm w}} \left[ T_{\rm w}^{n+1}+T_{\rm w}^n-T_{\rm p}^{n+1}-T_{\rm p}^n) \right]
+\label{eqn_imp_dTwdTx_2}
+\end{equation}
+
+Finally, the updated cell water vapor mass fraction, $Y^{n+1}_{\rm \alpha, g}$, may be found using (\ref{eqn_Yl_expansion}) in (\ref{eqn_imp_dmdt_2}), and then (\ref{eqn_imp_dmdt_2}) in (\ref{eqn_imp_Ynp_2}).
+\begin{equation}
+\label{eqn_final_Yv}
+Y^{n+1}_{\rm \alpha, g}=Y^n_{\rm \alpha, g}+\frac{\Delta t^n}{\rho V} \frac{A_{\rm p,s} h_{\rm m} \rho_{\rm f}}{2} \left[\frac{2Y_{\alpha,\ell}^n + \left(\frac{\d Y_{\alpha,\ell}}{\d T}\right) (T_{\rm p}^{n+1} - T_{\rm p}^n)-2Y^n_{\rm \alpha, g}}{1+\frac{\Delta t^n A_g h_{\rm m}(1-Y_{\rm \alpha, g})}{2 \rho_{\rm g} V}}\right]
+\end{equation}
+
+

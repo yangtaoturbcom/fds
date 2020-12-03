@@ -17,9 +17,9 @@ close all
 
 % set FDS standard plot format
 plot_style
+figure
 set(gca,'Units',Plot_Units)
-set(gca,'Position',[Plot_X,Plot_Y,Plot_Width,Plot_Height])
-set(gcf,'DefaultLineLineWidth',Line_Width)
+set(gca,'Position',[Plot_X Plot_Y Plot_Width Plot_Height])
 
 L = 9*2*pi/100; % box length (m)
 k0 = 2*pi/L;
@@ -27,9 +27,9 @@ kc = 1/2*N*k0;
 
 ddir = '../../Verification/Turbulence/';
 
-uvw_file1 = [ddir,chid,'_uvw_001.csv'];
-uvw_file2 = [ddir,chid,'_uvw_002.csv'];
-uvw_file3 = [ddir,chid,'_uvw_003.csv'];
+uvw_file1 = [ddir,chid,'_uvw_1.csv'];
+uvw_file2 = [ddir,chid,'_uvw_2.csv'];
+uvw_file3 = [ddir,chid,'_uvw_3.csv'];
 
 skip_case = 0;
 if ~exist(uvw_file1)
@@ -95,7 +95,7 @@ loglog(k,E3,'k-');
 
 % format axes
 set(gca,'FontName',Font_Name)
-set(gca,'FontSize',Key_Font_Size)
+set(gca,'FontSize',Label_Font_Size)
 axis([1e1 2e3 1e-7 1e-3])
 ylabel('{\it E(k)} (m^3/s^2)','FontSize',Title_Font_Size,'Interpreter',Font_Interpreter)
 xlabel('{\it k} (1/m)','FontSize',Title_Font_Size,'Interpreter',Font_Interpreter)
@@ -122,21 +122,22 @@ set(anno_obj_handle,'FontName',Font_Name)
 %     E2(j) = G(j)*G(j)*E2(j);
 %     E3(j) = G(j)*G(j)*E3(j);
 % end
-% 
+%
 % % Plot the filtered CBC data
 % loglog(k,E1,'ko','Linewidth',2)
 % loglog(k,E2,'ro','Linewidth',2)
 % loglog(k,E3,'bo','Linewidth',2)
 
-% add SVN if file is available
+% add version string if file is available
 
-SVN_Filename = [ddir,chid,'_git.txt'];
-addverstr(gca,SVN_Filename,'loglog')
+Git_Filename = [ddir,chid,'_git.txt'];
+addverstr(gca,Git_Filename,'loglog')
 
 % print to pdf
 set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 Paper_Width Paper_Height]);
+set(gcf,'Position',[0 0 Paper_Width Paper_Height]);
 print(gcf,'-dpdf',['../../Manuals/FDS_Verification_Guide/SCRIPT_FIGURES/',chid,'_spectra'])
-    
+

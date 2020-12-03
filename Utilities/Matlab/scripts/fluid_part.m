@@ -7,8 +7,6 @@ clear all
 
 % set the plot style parameters
 
-plot_style
-
 ddir='../../Verification/Sprinklers_and_Sprays/';
 
 skip_case = 0;
@@ -26,16 +24,16 @@ if ~exist([ddir,'fluid_part_mom_z_devc.csv'])
     skip_case = 1;
 end
 
-if ~exist([ddir,'fluid_part_mom_x.prt5'])
-    display(['Error: File ' [ddir,'fluid_part_mom_x.prt5'] ' does not exist. Skipping case.'])
+if ~exist([ddir,'fluid_part_mom_x_1.prt5'])
+    display(['Error: File ' [ddir,'fluid_part_mom_x_1.prt5'] ' does not exist. Skipping case.'])
     skip_case = 1;
 end
-if ~exist([ddir,'fluid_part_mom_y.prt5'])
-    display(['Error: File ' [ddir,'fluid_part_mom_y.prt5'] ' does not exist. Skipping case.'])
+if ~exist([ddir,'fluid_part_mom_y_1.prt5'])
+    display(['Error: File ' [ddir,'fluid_part_mom_y_1.prt5'] ' does not exist. Skipping case.'])
     skip_case = 1;
 end
-if ~exist([ddir,'fluid_part_mom_z.prt5'])
-    display(['Error: File ' [ddir,'fluid_part_mom_z.prt5'] ' does not exist. Skipping case.'])
+if ~exist([ddir,'fluid_part_mom_z_1.prt5'])
+    display(['Error: File ' [ddir,'fluid_part_mom_z_1.prt5'] ' does not exist. Skipping case.'])
     skip_case = 1;
 end
 
@@ -60,6 +58,11 @@ MZ = M.data(:,3);
 
 range=1:10:min([length(tx),length(ty),length(tz)]);
 
+plot_style
+figure
+set(gca,'Units',Plot_Units)
+set(gca,'Position',[Plot_X Plot_Y Plot_Width Plot_Height])
+
 H(1)=plot(tx(range),MX(range).*U(range),'bo'); hold on
 H(2)=plot(ty(range),MY(range).*V(range),'bv');
 H(3)=plot(tz(range),MZ(range).*W(range),'b+');
@@ -73,9 +76,9 @@ v_p = 4/3*pi*(d_p/2)^3;   % volume of a single droplet, m^3
 m_p = rho_p*v_p;          % mass of single droplet, kg
 pwt = mpv*v_xb/(n*m_p);   % particle weight factor
 
-[STIME_X, XP_X, YP_X, ZP_X, QP_X] = read_prt5([ddir,'fluid_part_mom_x.prt5'],'real*4');
-[STIME_Y, XP_Y, YP_Y, ZP_Y, QP_Y] = read_prt5([ddir,'fluid_part_mom_y.prt5'],'real*4');
-[STIME_Z, XP_Z, YP_Z, ZP_Z, QP_Z] = read_prt5([ddir,'fluid_part_mom_z.prt5'],'real*4');
+[STIME_X, XP_X, YP_X, ZP_X, QP_X] = read_prt5([ddir,'fluid_part_mom_x_1.prt5'],'real*4');
+[STIME_Y, XP_Y, YP_Y, ZP_Y, QP_Y] = read_prt5([ddir,'fluid_part_mom_y_1.prt5'],'real*4');
+[STIME_Z, XP_Z, YP_Z, ZP_Z, QP_Z] = read_prt5([ddir,'fluid_part_mom_z_1.prt5'],'real*4');
 
 P_X = zeros(1,numel(STIME_X));
 for i=1:numel(STIME_X)
@@ -126,22 +129,22 @@ alpha = M_p/m_p;
 
 
 for i=1:(numel(tx)-1)
-    
+
     u_soln(i) = u_p;
     U_soln(i) = U_p;
     t_soln(i) = tx(i);
-    
+
     dt = tx(i+1)-tx(i);
-    
+
     u0 = u_p;
     U0 = U_p;
-    
+
     beta = 0.5*rho*Cd*A_p*(1/m_p + 1/M_p)*abs(u0-U0);
-    
+
     u_p = u0/(1+beta*dt) + (u0+alpha*U0)/(1+alpha)*(beta*dt)/(1+beta*dt);
-   
+
     U_p = U0 + n*pwt*m_p/MX(1)*(u0-u_p);
-   
+
 end
 
 H(10)=plot(t_soln,MX(1)*U_soln,'b-');
@@ -157,7 +160,10 @@ legend_handle = legend(H(1:11),'FDS fluid U','FDS fluid V','FDS fluid W', ...
               'FDS particle U','FDS particle V','FDS particle W', ...
               'FDS total U','FDS total V','FDS total W', ...
               'Analytical fluid','Analytical particle','Location','EastOutside');
-set(legend_handle,'Interpreter',Font_Interpreter)
+set(legend_handle,'FontSize',Key_Font_Size)
+set(legend_handle,'Units',Paper_Units)
+pos = get(legend_handle,'position');
+set(legend_handle,'position',[Paper_Width pos(2:4)])
 
 % add Git revision if file is available
 Git_Filename = [ddir,'fluid_part_mom_x_git.txt'];
@@ -165,17 +171,19 @@ addverstr(gca,Git_Filename,'linear')
 
 PDF_Paper_Width = 1.5*Paper_Width;
 
-set(gcf,'Visible','on');
+set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[PDF_Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 PDF_Paper_Width Paper_Height]);
-display('Printing plot fluid_part_momentum.pdf...')
-          
+set(gcf,'Position',[0 0 PDF_Paper_Width Paper_Height]);
+
 print -dpdf ../../Manuals/FDS_Verification_Guide/SCRIPT_FIGURES/fluid_part_momentum
 
 % plot velocities
 
-figure(2)
+figure
+set(gca,'Units',Plot_Units)
+set(gca,'Position',[Plot_X Plot_Y Plot_Width Plot_Height])
 
 H(1)=plot(tx(range),U(range),'bo'); hold on
 H(2)=plot(ty(range),V(range),'bv');
@@ -206,18 +214,21 @@ ylabel('Velocity (m/s)','Interpreter',Font_Interpreter,'FontSize',Label_Font_Siz
 legend_handle = legend(H(1:7),'FDS fluid U','FDS fluid V','FDS fluid W',...
               'FDS particle U','FDS particle V','FDS particle W',...
               'Equilibrium velocity','Location','EastOutside');
-set(legend_handle,'Interpreter',Font_Interpreter)
+set(legend_handle,'FontSize',Key_Font_Size)
+set(legend_handle,'Units',Paper_Units)
+pos = get(legend_handle,'position');
+set(legend_handle,'position',[Paper_Width pos(2:4)])
 
 % add Git revision if file is available
 Git_Filename = [ddir,'fluid_part_mom_x_git.txt'];
 addverstr(gca,Git_Filename,'linear')
 
-set(gcf,'Visible','on');
+set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[PDF_Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 PDF_Paper_Width Paper_Height]);
-display('Printing plot fluid_part_velocity.pdf...')
-          
+set(gcf,'Position',[0 0 PDF_Paper_Width Paper_Height]);
+
 print -dpdf ../../Manuals/FDS_Verification_Guide/SCRIPT_FIGURES/fluid_part_velocity
 
 

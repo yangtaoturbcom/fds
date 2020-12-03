@@ -9,8 +9,7 @@ USE MESH_POINTERS
 IMPLICIT NONE
 PRIVATE
 
-REAL(EB), POINTER, DIMENSION(:,:,:,:) :: ZZP
-REAL(EB), POINTER, DIMENSION(:,:,:) :: UU,VV,WW,RHOP,DP,UP,VP,WP
+REAL(EB), POINTER, DIMENSION(:,:,:) :: UU,VV,WW,RHOP
 
 PUBLIC MASS_FINITE_DIFFERENCES,DENSITY,SCALAR_FACE_VALUE
 
@@ -21,20 +20,22 @@ SUBROUTINE MASS_FINITE_DIFFERENCES(NM)
 
 ! Compute spatial differences for density equation
 
-USE COMP_FUNCTIONS, ONLY: SECOND
+USE COMP_FUNCTIONS, ONLY: CURRENT_TIME
 USE GLOBAL_CONSTANTS, ONLY: N_TOTAL_SCALARS,PREDICTOR,EVACUATION_ONLY,SOLID_PHASE_ONLY,T_USED
 
 INTEGER, INTENT(IN) :: NM
-REAL(EB) :: TNOW,ZZZ(1:4)
+REAL(EB) :: TNOW,ZZZ(1:4),GRAD_ZZ_FUEL(3),GRAD_ZZ_AIR(3),GZF_DOT_GZA
+REAL(EB), PARAMETER :: DUMMY=0._EB
 INTEGER  :: I,J,K,N,IOR,IW,IIG,JJG,KKG,II,JJ,KK
 REAL(EB), POINTER, DIMENSION(:,:,:,:) :: ZZP=>NULL()
 REAL(EB), POINTER, DIMENSION(:,:,:) :: RHO_Z_P=>NULL()
-TYPE(WALL_TYPE), POINTER :: WC=>NULL()
 LOGICAL :: THIN_OBSTRUCTION
+TYPE(WALL_TYPE), POINTER :: WC=>NULL()
+TYPE(REACTION_TYPE), POINTER :: R1=>NULL()
 
 IF (EVACUATION_ONLY(NM) .OR. SOLID_PHASE_ONLY) RETURN
 
-TNOW=SECOND()
+TNOW=CURRENT_TIME()
 CALL POINT_TO_MESH(NM)
 
 IF (PREDICTOR) THEN
@@ -50,6 +51,11 @@ ELSE
    RHOP => RHOS
    ZZP => ZZS
 ENDIF
+
+! Reset counter for CLIP_RHOMIN, CLIP_RHOMAX
+! Done here so CLIP_COUNT will persist until WRITE_DIAGNOSTICS is called
+
+IF (PREDICTOR) CLIP_COUNT = 0
 
 ! Species face values
 
@@ -75,7 +81,7 @@ SPECIES_LOOP: DO N=1,N_TOTAL_SCALARS
       DO J=1,JBAR
          DO I=1,IBM1
             ZZZ(1:4) = RHO_Z_P(I-1:I+2,J,K)
-            FX(I,J,K,N) = SCALAR_FACE_VALUE(UU(I,J,K),ZZZ,FLUX_LIMITER)
+            FX(I,J,K,N) = SCALAR_FACE_VALUE(UU(I,J,K),ZZZ,I_FLUX_LIMITER)
          ENDDO
       ENDDO
    ENDDO
@@ -86,7 +92,7 @@ SPECIES_LOOP: DO N=1,N_TOTAL_SCALARS
       DO J=1,JBM1
          DO I=1,IBAR
             ZZZ(1:4) = RHO_Z_P(I,J-1:J+2,K)
-            FY(I,J,K,N) = SCALAR_FACE_VALUE(VV(I,J,K),ZZZ,FLUX_LIMITER)
+            FY(I,J,K,N) = SCALAR_FACE_VALUE(VV(I,J,K),ZZZ,I_FLUX_LIMITER)
          ENDDO
       ENDDO
    ENDDO
@@ -97,7 +103,7 @@ SPECIES_LOOP: DO N=1,N_TOTAL_SCALARS
       DO J=1,JBAR
          DO I=1,IBAR
             ZZZ(1:4) = RHO_Z_P(I,J,K-1:K+2)
-            FZ(I,J,K,N) = SCALAR_FACE_VALUE(WW(I,J,K),ZZZ,FLUX_LIMITER)
+            FZ(I,J,K,N) = SCALAR_FACE_VALUE(WW(I,J,K),ZZZ,I_FLUX_LIMITER)
          ENDDO
       ENDDO
    ENDDO
@@ -136,17 +142,17 @@ SPECIES_LOOP: DO N=1,N_TOTAL_SCALARS
 
       SELECT CASE(IOR)
          CASE( 1)
-            IF (.NOT.THIN_OBSTRUCTION .OR. UU(IIG-1,JJG,KKG)>=0._EB) FX(IIG-1,JJG,KKG,N) = WC%RHO_F*WC%ZZ_F(N)
+            IF (.NOT.THIN_OBSTRUCTION .OR. UU(IIG-1,JJG,KKG)>=0._EB) FX(IIG-1,JJG,KKG,N) = WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N)
          CASE(-1)
-            IF (.NOT.THIN_OBSTRUCTION .OR. UU(IIG,JJG,KKG)<=0._EB)   FX(IIG,JJG,KKG,N)   = WC%RHO_F*WC%ZZ_F(N)
+            IF (.NOT.THIN_OBSTRUCTION .OR. UU(IIG,JJG,KKG)<=0._EB)   FX(IIG,JJG,KKG,N)   = WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N)
          CASE( 2)
-            IF (.NOT.THIN_OBSTRUCTION .OR. VV(IIG,JJG-1,KKG)>=0._EB) FY(IIG,JJG-1,KKG,N) = WC%RHO_F*WC%ZZ_F(N)
+            IF (.NOT.THIN_OBSTRUCTION .OR. VV(IIG,JJG-1,KKG)>=0._EB) FY(IIG,JJG-1,KKG,N) = WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N)
          CASE(-2)
-            IF (.NOT.THIN_OBSTRUCTION .OR. VV(IIG,JJG,KKG)<=0._EB)   FY(IIG,JJG,KKG,N)   = WC%RHO_F*WC%ZZ_F(N)
+            IF (.NOT.THIN_OBSTRUCTION .OR. VV(IIG,JJG,KKG)<=0._EB)   FY(IIG,JJG,KKG,N)   = WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N)
          CASE( 3)
-            IF (.NOT.THIN_OBSTRUCTION .OR. WW(IIG,JJG,KKG-1)>=0._EB) FZ(IIG,JJG,KKG-1,N) = WC%RHO_F*WC%ZZ_F(N)
+            IF (.NOT.THIN_OBSTRUCTION .OR. WW(IIG,JJG,KKG-1)>=0._EB) FZ(IIG,JJG,KKG-1,N) = WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N)
          CASE(-3)
-            IF (.NOT.THIN_OBSTRUCTION .OR. WW(IIG,JJG,KKG)<=0._EB)   FZ(IIG,JJG,KKG,N)   = WC%RHO_F*WC%ZZ_F(N)
+            IF (.NOT.THIN_OBSTRUCTION .OR. WW(IIG,JJG,KKG)<=0._EB)   FZ(IIG,JJG,KKG,N)   = WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N)
       END SELECT
 
       ! Overwrite first off-wall advective flux if flow is away from the wall and if the face is not also a wall cell
@@ -159,36 +165,36 @@ SPECIES_LOOP: DO N=1,N_TOTAL_SCALARS
                ! ///   II   ///  II+1  |  II+2  | ...
                !                       ^ WALL_INDEX(II+1,+1)
                IF ((UU(II+1,JJ,KK)>0._EB) .AND. .NOT.(WALL_INDEX(CELL_INDEX(II+1,JJ,KK),+1)>0)) THEN
-                  ZZZ(1:3) = (/WC%RHO_F*WC%ZZ_F(N),RHO_Z_P(II+1:II+2,JJ,KK)/)
-                  FX(II+1,JJ,KK,N) = SCALAR_FACE_VALUE(UU(II+1,JJ,KK),ZZZ,FLUX_LIMITER)
+                  ZZZ(1:4) = (/WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N),RHO_Z_P(II+1:II+2,JJ,KK),DUMMY/)
+                  FX(II+1,JJ,KK,N) = SCALAR_FACE_VALUE(UU(II+1,JJ,KK),ZZZ,I_FLUX_LIMITER)
                ENDIF
             CASE(-1) OFF_WALL_SELECT_2
                !            FX/UU(II-2)     ghost
                ! ... |  II-2  |  II-1  ///   II   ///
                !              ^ WALL_INDEX(II-1,-1)
                IF ((UU(II-2,JJ,KK)<0._EB) .AND. .NOT.(WALL_INDEX(CELL_INDEX(II-1,JJ,KK),-1)>0)) THEN
-                  ZZZ(2:4) = (/RHO_Z_P(II-2:II-1,JJ,KK),WC%RHO_F*WC%ZZ_F(N)/)
-                  FX(II-2,JJ,KK,N) = SCALAR_FACE_VALUE(UU(II-2,JJ,KK),ZZZ,FLUX_LIMITER)
+                  ZZZ(1:4) = (/DUMMY,RHO_Z_P(II-2:II-1,JJ,KK),WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N)/)
+                  FX(II-2,JJ,KK,N) = SCALAR_FACE_VALUE(UU(II-2,JJ,KK),ZZZ,I_FLUX_LIMITER)
                ENDIF
             CASE( 2) OFF_WALL_SELECT_2
                IF ((VV(II,JJ+1,KK)>0._EB) .AND. .NOT.(WALL_INDEX(CELL_INDEX(II,JJ+1,KK),+2)>0)) THEN
-                  ZZZ(1:3) = (/WC%RHO_F*WC%ZZ_F(N),RHO_Z_P(II,JJ+1:JJ+2,KK)/)
-                  FY(II,JJ+1,KK,N) = SCALAR_FACE_VALUE(VV(II,JJ+1,KK),ZZZ,FLUX_LIMITER)
+                  ZZZ(1:4) = (/WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N),RHO_Z_P(II,JJ+1:JJ+2,KK),DUMMY/)
+                  FY(II,JJ+1,KK,N) = SCALAR_FACE_VALUE(VV(II,JJ+1,KK),ZZZ,I_FLUX_LIMITER)
                ENDIF
             CASE(-2) OFF_WALL_SELECT_2
                IF ((VV(II,JJ-2,KK)<0._EB) .AND. .NOT.(WALL_INDEX(CELL_INDEX(II,JJ-1,KK),-2)>0)) THEN
-                  ZZZ(2:4) = (/RHO_Z_P(II,JJ-2:JJ-1,KK),WC%RHO_F*WC%ZZ_F(N)/)
-                  FY(II,JJ-2,KK,N) = SCALAR_FACE_VALUE(VV(II,JJ-2,KK),ZZZ,FLUX_LIMITER)
+                  ZZZ(1:4) = (/DUMMY,RHO_Z_P(II,JJ-2:JJ-1,KK),WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N)/)
+                  FY(II,JJ-2,KK,N) = SCALAR_FACE_VALUE(VV(II,JJ-2,KK),ZZZ,I_FLUX_LIMITER)
                ENDIF
             CASE( 3) OFF_WALL_SELECT_2
                IF ((WW(II,JJ,KK+1)>0._EB) .AND. .NOT.(WALL_INDEX(CELL_INDEX(II,JJ,KK+1),+3)>0)) THEN
-                  ZZZ(1:3) = (/WC%RHO_F*WC%ZZ_F(N),RHO_Z_P(II,JJ,KK+1:KK+2)/)
-                  FZ(II,JJ,KK+1,N) = SCALAR_FACE_VALUE(WW(II,JJ,KK+1),ZZZ,FLUX_LIMITER)
+                  ZZZ(1:4) = (/WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N),RHO_Z_P(II,JJ,KK+1:KK+2),DUMMY/)
+                  FZ(II,JJ,KK+1,N) = SCALAR_FACE_VALUE(WW(II,JJ,KK+1),ZZZ,I_FLUX_LIMITER)
                ENDIF
             CASE(-3) OFF_WALL_SELECT_2
                IF ((WW(II,JJ,KK-2)<0._EB) .AND. .NOT.(WALL_INDEX(CELL_INDEX(II,JJ,KK-1),-3)>0)) THEN
-                  ZZZ(2:4) = (/RHO_Z_P(II,JJ,KK-2:KK-1),WC%RHO_F*WC%ZZ_F(N)/)
-                  FZ(II,JJ,KK-2,N) = SCALAR_FACE_VALUE(WW(II,JJ,KK-2),ZZZ,FLUX_LIMITER)
+                  ZZZ(1:4) = (/DUMMY,RHO_Z_P(II,JJ,KK-2:KK-1),WC%ONE_D%RHO_F*WC%ONE_D%ZZ_F(N)/)
+                  FZ(II,JJ,KK-2,N) = SCALAR_FACE_VALUE(WW(II,JJ,KK-2),ZZZ,I_FLUX_LIMITER)
                ENDIF
          END SELECT OFF_WALL_SELECT_2
 
@@ -198,7 +204,36 @@ SPECIES_LOOP: DO N=1,N_TOTAL_SCALARS
 
 ENDDO SPECIES_LOOP
 
-T_USED(3)=T_USED(3)+SECOND()-TNOW
+! Flame index model (under construction)
+
+IF (FLAME_INDEX_MODEL .AND. PREDICTOR) THEN
+   FLAME_INDEX = -1._EB
+   R1=>REACTION(1)
+   !$OMP DO SCHEDULE(STATIC)
+   DO K=1,KBAR
+      DO J=1,JBAR
+         DO I=1,IBAR
+            GRAD_ZZ_FUEL(1) = FX(I,J,K,R1%FUEL_SMIX_INDEX) - FX(I-1,J,K,R1%FUEL_SMIX_INDEX)
+            GRAD_ZZ_FUEL(2) = FY(I,J,K,R1%FUEL_SMIX_INDEX) - FY(I,J-1,K,R1%FUEL_SMIX_INDEX)
+            GRAD_ZZ_FUEL(3) = FZ(I,J,K,R1%FUEL_SMIX_INDEX) - FZ(I,J,K-1,R1%FUEL_SMIX_INDEX)
+
+            GRAD_ZZ_AIR(1) = FX(I,J,K,R1%AIR_SMIX_INDEX) - FX(I-1,J,K,R1%AIR_SMIX_INDEX)
+            GRAD_ZZ_AIR(2) = FY(I,J,K,R1%AIR_SMIX_INDEX) - FY(I,J-1,K,R1%AIR_SMIX_INDEX)
+            GRAD_ZZ_AIR(3) = FZ(I,J,K,R1%AIR_SMIX_INDEX) - FZ(I,J,K-1,R1%AIR_SMIX_INDEX)
+
+            GZF_DOT_GZA = DOT_PRODUCT(GRAD_ZZ_FUEL,GRAD_ZZ_AIR)
+            IF (ABS(GZF_DOT_GZA)>TWO_EPSILON_EB) THEN
+               FLAME_INDEX(I,J,K) = MIN(1._EB,MAX(-1._EB,GZF_DOT_GZA/ABS(GZF_DOT_GZA)))
+            ELSE
+               FLAME_INDEX(I,J,K) = 0._EB
+            ENDIF
+         ENDDO
+      ENDDO
+   ENDDO
+   !$OMP END DO NOWAIT
+ENDIF
+
+T_USED(3)=T_USED(3)+CURRENT_TIME()-TNOW
 
 END SUBROUTINE MASS_FINITE_DIFFERENCES
 
@@ -207,12 +242,13 @@ SUBROUTINE DENSITY(T,DT,NM)
 
 ! Update the species mass fractions and density
 
-USE COMP_FUNCTIONS, ONLY: SECOND,SHUTDOWN
-USE PHYSICAL_FUNCTIONS, ONLY : GET_SPECIFIC_GAS_CONSTANT,GET_SENSIBLE_ENTHALPY,GET_SPECIFIC_HEAT
-USE GLOBAL_CONSTANTS, ONLY: N_TRACKED_SPECIES,EVACUATION_ONLY, &
-                            PREDICTOR,N_ZONE,GAS_SPECIES,R0,SOLID_PHASE_ONLY,T_USED
+USE COMP_FUNCTIONS, ONLY: CURRENT_TIME,SHUTDOWN
+USE PHYSICAL_FUNCTIONS, ONLY : GET_SPECIFIC_GAS_CONSTANT
+USE GLOBAL_CONSTANTS, ONLY: N_TRACKED_SPECIES,EVACUATION_ONLY,PREDICTOR,N_ZONE,SOLID_PHASE_ONLY,T_USED,CC_IBM
 USE MANUFACTURED_SOLUTIONS, ONLY: VD2D_MMS_Z_OF_RHO,VD2D_MMS_Z_SRC,UF_MMS,WF_MMS,VD2D_MMS_RHO_OF_Z,VD2D_MMS_Z_SRC
 USE SOOT_ROUTINES, ONLY: SETTLING_VELOCITY
+USE COMPLEX_GEOMETRY, ONLY : SET_EXIMADVFLX_3D,SET_DOMAINADVFLX_3D,ROTATED_CUBE_RHS_ZZ
+
 INTEGER, INTENT(IN) :: NM
 REAL(EB), INTENT(IN) :: T,DT
 REAL(EB) :: TNOW,ZZ_GET(1:N_TRACKED_SPECIES),RHS,UN,Q_Z,XHAT,ZHAT
@@ -232,11 +268,11 @@ SELECT CASE (PERIODIC_TEST)
       IF (PROJECTION .AND. ICYC<=1) RETURN
    CASE (5,8)
       RETURN
-   CASE (7,11)
+   CASE (4,7,11,21,22)
       ! CONTINUE
 END SELECT
 
-TNOW=SECOND()
+TNOW=CURRENT_TIME()
 CALL POINT_TO_MESH(NM)
 UU=>WORK1
 VV=>WORK2
@@ -250,7 +286,7 @@ CASE(.TRUE.) PREDICTOR_STEP
    IF (FIRST_PASS) THEN
       ! This IF is required because DEL_RHO_D_DEL_Z is updated to the next time level in divg within
       ! the CHANGE_TIME_STEP loop in main while we are determining the appropriate stable DT.
-      IF (ANY(SPECIES_MIXTURE%DEPOSITING) .AND. GRAVITATIONAL_SETTLING) CALL SETTLING_VELOCITY(NM)
+      IF (ANY(SPECIES_MIXTURE%DEPOSITING) .AND. (GRAVITATIONAL_SETTLING .OR. THERMOPHORETIC_SETTLING)) CALL SETTLING_VELOCITY(NM)
       DEL_RHO_D_DEL_Z__0 = DEL_RHO_D_DEL_Z
    ENDIF
 
@@ -272,7 +308,7 @@ CASE(.TRUE.) PREDICTOR_STEP
       SELECT CASE(WC%BOUNDARY_TYPE)
          CASE DEFAULT; CYCLE WALL_LOOP
          ! SOLID_BOUNDARY is not currently functional here, but keep for testing
-         CASE(SOLID_BOUNDARY);        UN = -SIGN(1._EB,REAL(IOR,EB))*WC%ONE_D%UW
+         CASE(SOLID_BOUNDARY);        UN = -SIGN(1._EB,REAL(IOR,EB))*WC%ONE_D%U_NORMAL
          CASE(INTERPOLATED_BOUNDARY); UN = UVW_SAVE(IW)
       END SELECT
 
@@ -305,9 +341,20 @@ CASE(.TRUE.) PREDICTOR_STEP
       ENDDO
    ENDDO
 
+   IF (CC_IBM) CALL SET_EXIMADVFLX_3D(NM,UU,VV,WW)
+   IF (CHECK_MASS_CONSERVE) CALL SET_DOMAINADVFLX_3D(UU,VV,WW,PREDICTOR)
+   IF (STORE_SPECIES_FLUX) THEN
+      DO N=1,N_TOTAL_SCALARS
+         ADV_FX(:,:,:,N) = FX(:,:,:,N)*UU(:,:,:)
+         ADV_FY(:,:,:,N) = FY(:,:,:,N)*VV(:,:,:)
+         ADV_FZ(:,:,:,N) = FZ(:,:,:,N)*WW(:,:,:)
+      ENDDO
+   ENDIF
+
    ! Add gas production source term
 
-   IF (N_LP_ARRAY_INDICES>0 .OR. N_REACTIONS>0 .OR. ANY(SPECIES_MIXTURE%DEPOSITING)) ZZS = ZZS + DT*M_DOT_PPP
+   IF (N_LP_ARRAY_INDICES>0 .OR. N_REACTIONS>0 .OR. ANY(SPECIES_MIXTURE%DEPOSITING) .OR. &
+       ANY(SPECIES_MIXTURE%CONDENSATION_SMIX_INDEX>0)) ZZS = ZZS + DT*M_DOT_PPP
 
    ! Manufactured solution
 
@@ -324,6 +371,8 @@ CASE(.TRUE.) PREDICTOR_STEP
             ENDDO
          ENDDO
       ENDDO
+   ELSEIF(PERIODIC_TEST==21 .OR. PERIODIC_TEST==22 .OR. PERIODIC_TEST==23) THEN
+      CALL ROTATED_CUBE_RHS_ZZ(T,DT,NM)
    ENDIF
 
    ! Get rho = sum(rho*Y_alpha)
@@ -339,7 +388,7 @@ CASE(.TRUE.) PREDICTOR_STEP
 
    ! Check mass density for positivity
 
-   CALL CHECK_MASS_DENSITY
+   CALL CHECK_MASS_DENSITY(NM)
 
    ! Extract mass fraction from RHO * ZZ
 
@@ -407,7 +456,7 @@ CASE(.FALSE.) PREDICTOR_STEP
       SELECT CASE(WC%BOUNDARY_TYPE)
          CASE DEFAULT; CYCLE WALL_LOOP_2
          ! SOLID_BOUNDARY is not currently functional here, but keep for testing
-         CASE(SOLID_BOUNDARY);        UN = -SIGN(1._EB,REAL(IOR,EB))*WC%ONE_D%UWS
+         CASE(SOLID_BOUNDARY);        UN = -SIGN(1._EB,REAL(IOR,EB))*WC%ONE_D%U_NORMAL_S
          CASE(INTERPOLATED_BOUNDARY); UN = UVW_SAVE(IW)
       END SELECT
 
@@ -421,7 +470,7 @@ CASE(.FALSE.) PREDICTOR_STEP
       END SELECT
    ENDDO WALL_LOOP_2
 
-   IF (ANY(SPECIES_MIXTURE%DEPOSITING) .AND. GRAVITATIONAL_SETTLING) CALL SETTLING_VELOCITY(NM)
+   IF (ANY(SPECIES_MIXTURE%DEPOSITING) .AND. (GRAVITATIONAL_SETTLING .OR. THERMOPHORETIC_SETTLING)) CALL SETTLING_VELOCITY(NM)
 
    ! Compute species mass density at the next time step
 
@@ -444,10 +493,23 @@ CASE(.FALSE.) PREDICTOR_STEP
 
    ! Add gas production source term
 
-   IF (N_LP_ARRAY_INDICES>0 .OR. N_REACTIONS>0 .OR. ANY(SPECIES_MIXTURE%DEPOSITING)) THEN
+   IF (N_LP_ARRAY_INDICES>0 .OR. N_REACTIONS>0 .OR. ANY(SPECIES_MIXTURE%DEPOSITING) .OR. &
+       ANY(SPECIES_MIXTURE%CONDENSATION_SMIX_INDEX>0)) THEN
       ZZ = ZZ + 0.5_EB*DT*M_DOT_PPP
-      M_DOT_PPP = 0._EB
-      D_SOURCE  = 0._EB
+      IF (.NOT. CC_IBM) THEN ! We will use these for Regular cells in cut-cell region in CCREGION_DENSITY.
+         M_DOT_PPP = 0._EB
+         D_SOURCE  = 0._EB
+      ENDIF
+   ENDIF
+
+   IF (CC_IBM) CALL SET_EXIMADVFLX_3D(NM,UU,VV,WW)
+   IF (CHECK_MASS_CONSERVE) CALL SET_DOMAINADVFLX_3D(UU,VV,WW,PREDICTOR)
+   IF (STORE_SPECIES_FLUX) THEN
+      DO N=1,N_TOTAL_SCALARS
+         ADV_FX(:,:,:,N) = 0.5_EB*( ADV_FX(:,:,:,N) + FX(:,:,:,N)*UU(:,:,:) )
+         ADV_FY(:,:,:,N) = 0.5_EB*( ADV_FY(:,:,:,N) + FY(:,:,:,N)*VV(:,:,:) )
+         ADV_FZ(:,:,:,N) = 0.5_EB*( ADV_FZ(:,:,:,N) + FZ(:,:,:,N)*WW(:,:,:) )
+      ENDDO
    ENDIF
 
    ! Manufactured solution
@@ -465,6 +527,8 @@ CASE(.FALSE.) PREDICTOR_STEP
             ENDDO
          ENDDO
       ENDDO
+   ELSEIF(PERIODIC_TEST==21 .OR. PERIODIC_TEST==22 .OR. PERIODIC_TEST==23) THEN
+      CALL ROTATED_CUBE_RHS_ZZ(T,DT,NM)
    ENDIF
 
    ! Get rho = sum(rho*Y_alpha)
@@ -480,7 +544,7 @@ CASE(.FALSE.) PREDICTOR_STEP
 
    ! Check mass density for positivity
 
-   CALL CHECK_MASS_DENSITY
+   CALL CHECK_MASS_DENSITY(NM)
 
    ! Extract Y_n from rho*Y_n
 
@@ -528,24 +592,30 @@ CASE(.FALSE.) PREDICTOR_STEP
 
 END SELECT PREDICTOR_STEP
 
-T_USED(3)=T_USED(3)+SECOND()-TNOW
+T_USED(3)=T_USED(3)+CURRENT_TIME()-TNOW
 
 END SUBROUTINE DENSITY
 
 
-SUBROUTINE CHECK_MASS_DENSITY
+!> \brief Redistribute mass from cells below or above the density cut-off limits
+!> \param NM Mesh number
+!> \details Do not apply OpenMP to this routine
 
-! Redistribute mass from cells below or above the density cut-off limits
-! Do not apply OpenMP to this routine
+SUBROUTINE CHECK_MASS_DENSITY(NM)
 
 USE GLOBAL_CONSTANTS, ONLY : PREDICTOR,RHOMIN,RHOMAX
+INTEGER, INTENT(IN) :: NM
 REAL(EB) :: MASS_N(-3:3),CONST,MASS_C,RHO_ZZ_CUT,RHO_CUT,VC(-3:3),SIGN_FACTOR,SUM_MASS_N,VC1(-3:3),RHO_ZZ_MIN,RHO_ZZ_MAX
 INTEGER  :: IC,I,J,K,N
 REAL(EB), POINTER, DIMENSION(:,:,:) :: DELTA_RHO=>NULL(),DELTA_RHO_ZZ=>NULL(),RHOP=>NULL()
 REAL(EB), POINTER, DIMENSION(:,:,:,:) :: RHO_ZZ=>NULL()
 
+IF (CHECK_MASS_CONSERVE) RETURN ! Don't modify scalar components.
+
 DELTA_RHO => WORK4
 DELTA_RHO =  0._EB
+CLIP_RHOMIN = .FALSE.
+CLIP_RHOMAX = .FALSE.
 
 IF (PREDICTOR) THEN
    RHO_ZZ => ZZS  ! At this stage of the time step, ZZS is actually RHOS*ZZS
@@ -574,9 +644,11 @@ DO K=1,KBAR
          IF (RHOP(I,J,K)<RHOMIN) THEN
             RHO_CUT = RHOMIN
             SIGN_FACTOR = 1._EB
+            CLIP_RHOMIN = .TRUE.
          ELSE
             RHO_CUT = RHOMAX
             SIGN_FACTOR = -1._EB
+            CLIP_RHOMAX = .TRUE.
          ENDIF
          MASS_N = 0._EB
          VC( 0)  = DX(I)  * VC1( 0)
@@ -694,6 +766,11 @@ DO K=1,KBAR
    ENDDO
 ENDDO
 
+IF (.NOT.TEST_CLIP_STABILITY_CHECK) THEN
+   IF (CLIP_RHOMIN) WRITE(LU_ERR,'(A,F8.3,A,I0)') 'WARNING: Minimum density, ',RHOMIN,' kg/m3, clipped in Mesh ',NM
+   IF (CLIP_RHOMAX) WRITE(LU_ERR,'(A,F8.3,A,I0)') 'WARNING: Maximum density, ',RHOMAX,' kg/m3, clipped in Mesh ',NM
+ENDIF
+
 END SUBROUTINE CHECK_MASS_DENSITY
 
 
@@ -728,7 +805,7 @@ REAL(EB) FUNCTION SCALAR_FACE_VALUE(A,U,LIMITER)
 
 REAL(EB), INTENT(IN) :: A,U(4)
 INTEGER, INTENT(IN) :: LIMITER
-REAL(EB) :: R,B,DU_UP,DU_LOC,V(5)
+REAL(EB) :: R,B,DU_UP,DU_LOC,V(-2:2)
 
 ! This function computes the scalar value on a face.
 ! The scalar is denoted U, and the velocity is denoted A.
@@ -777,7 +854,7 @@ WIND_DIRECTION_IF: IF (A>0._EB) THEN
          SCALAR_FACE_VALUE = U(2) + 0.5_EB*B*DU_UP
       CASE(5) ! MP5, Suresh and Huynh (1997)
          V = (/2._EB*U(1)-U(2),U(1:4)/)
-         SCALAR_FACE_VALUE = MP5(V)
+         SCALAR_FACE_VALUE = MP5()
    END SELECT
 
 ELSE WIND_DIRECTION_IF
@@ -808,123 +885,15 @@ ELSE WIND_DIRECTION_IF
          SCALAR_FACE_VALUE = U(3) - 0.5_EB*B*DU_UP
       CASE(5) ! MP5, Suresh and Huynh (1997)
          V = (/2._EB*U(4)-U(3),U(4),U(3),U(2),U(1)/)
-         SCALAR_FACE_VALUE = MP5(V)
+         SCALAR_FACE_VALUE = MP5()
     END SELECT
 
 ENDIF WIND_DIRECTION_IF
 
-END FUNCTION SCALAR_FACE_VALUE
+CONTAINS
 
-
-REAL(EB) FUNCTION SCALAR_FACE_VALUE_NEW(A,U,LIMITER)
-
-REAL(EB), INTENT(IN) :: A(3),U(4)
-INTEGER, INTENT(IN) :: LIMITER
-REAL(EB) :: R,B,DU_UP,DU_LOC,V(5)
-
-! This function is identical to the original SCALAR_FACE_VALUE except
-! that we only use 2nd order limiters if the upwind velocity is the
-! same sign as the local face velocity.
-
-! This function computes the scalar value on a face.
-! The scalar is denoted U, and the velocity is denoted A.
-! The divergence (computed elsewhere) uses a central difference across
-! the cell subject to a flux LIMITER.  The flux LIMITER choices are:
-!
-! CENTRAL_LIMITER  = 0
-! GODUNOV_LIMITER  = 1
-! SUPERBEE_LIMITER = 2
-! MINMOD_LIMITER   = 3
-! CHARM_LIMITER    = 4
-! MP5_LIMITER      = 5
-!
-!                    location of face
-!
-!                            f
-!    |     o     |     o     |     o     |     o     |
-!               A(1)        A(2)        A(3)
-!         U(1)        U(2)        U(3)        U(4)
-
-WIND_DIRECTION_IF: IF (A(2)>0._EB) THEN
-
-   ! the flow is left to right
-
-   IF (A(1)>0._EB) THEN
-      DU_UP = U(2)-U(1)
-   ELSE
-      DU_UP = 0._EB
-   ENDIF
-   DU_LOC = U(3)-U(2)
-
-   R = 0._EB
-   B = 0._EB
-
-   SELECT CASE(LIMITER)
-      CASE(0) ! central differencing
-         SCALAR_FACE_VALUE_NEW = 0.5_EB*(U(2)+U(3))
-      CASE(1) ! first-order upwinding
-         SCALAR_FACE_VALUE_NEW = U(2)
-      CASE(2) ! SUPERBEE, Roe (1986)
-         IF (ABS(DU_LOC)>TWO_EPSILON_EB) R = DU_UP/DU_LOC
-         B = MAX(0._EB,MIN(2._EB*R,1._EB),MIN(R,2._EB))
-         SCALAR_FACE_VALUE_NEW = U(2) + 0.5_EB*B*DU_LOC
-      CASE(3) ! MINMOD
-         IF (ABS(DU_LOC)>TWO_EPSILON_EB) R = DU_UP/DU_LOC
-         B = MAX(0._EB,MIN(1._EB,R))
-         SCALAR_FACE_VALUE_NEW = U(2) + 0.5_EB*B*DU_LOC
-      CASE(4) ! CHARM
-         IF (ABS(DU_UP)>TWO_EPSILON_EB) R = DU_LOC/DU_UP
-         IF (R>0._EB) B = R*(3._EB*R+1._EB)/((R+1._EB)**2)
-         SCALAR_FACE_VALUE_NEW = U(2) + 0.5_EB*B*DU_UP
-      CASE(5) ! MP5, Suresh and Huynh (1997)
-         V = (/2._EB*U(1)-U(2),U(1:4)/)
-         SCALAR_FACE_VALUE_NEW = MP5(V)
-   END SELECT
-
-ELSE WIND_DIRECTION_IF
-
-   ! the flow is right to left
-
-   IF (A(3)<0._EB) THEN
-      DU_UP = U(4)-U(3)
-   ELSE
-      DU_UP = 0._EB
-   ENDIF
-   DU_LOC = U(3)-U(2)
-
-   R = 0._EB
-   B = 0._EB
-
-   SELECT CASE(LIMITER)
-      CASE(0) ! central differencing
-         SCALAR_FACE_VALUE_NEW = 0.5_EB*(U(2)+U(3))
-      CASE(1) ! first-order upwinding
-         SCALAR_FACE_VALUE_NEW = U(3)
-      CASE(2) ! SUPERBEE, Roe (1986)
-         IF (ABS(DU_LOC)>TWO_EPSILON_EB) R = DU_UP/DU_LOC
-         B = MAX(0._EB,MIN(2._EB*R,1._EB),MIN(R,2._EB))
-         SCALAR_FACE_VALUE_NEW = U(3) - 0.5_EB*B*DU_LOC
-      CASE(3) ! MINMOD
-         IF (ABS(DU_LOC)>TWO_EPSILON_EB) R = DU_UP/DU_LOC
-         B = MAX(0._EB,MIN(1._EB,R))
-         SCALAR_FACE_VALUE_NEW = U(3) - 0.5_EB*B*DU_LOC
-      CASE(4) ! CHARM
-         IF (ABS(DU_UP)>TWO_EPSILON_EB) R = DU_LOC/DU_UP
-         IF (R>0._EB) B = R*(3._EB*R+1._EB)/((R+1._EB)**2)
-         SCALAR_FACE_VALUE_NEW = U(3) - 0.5_EB*B*DU_UP
-      CASE(5) ! MP5, Suresh and Huynh (1997)
-         V = (/2._EB*U(4)-U(3),U(4),U(3),U(2),U(1)/)
-         SCALAR_FACE_VALUE_NEW = MP5(V)
-    END SELECT
-
-ENDIF WIND_DIRECTION_IF
-
-END FUNCTION SCALAR_FACE_VALUE_NEW
-
-
-REAL(EB) FUNCTION MP5(V)
+REAL(EB) FUNCTION MP5()
 USE MATH_FUNCTIONS, ONLY: MINMOD2,MINMOD4
-REAL(EB), INTENT(IN) :: V(-2:2)
 REAL(EB), PARAMETER :: B1 = 0.016666666666667_EB, B2 = 1.333333333333_EB, ALPHA=4._EB, EPSM=1.E-10_EB
 REAL(EB) :: VOR,VMP,DJM1,DJ,DJP1,DM4JPH,DM4JMH,VUL,VAV,VMD,VLC,VMIN,VMAX
 
@@ -950,5 +919,8 @@ ELSE
 ENDIF
 
 END FUNCTION MP5
+
+END FUNCTION SCALAR_FACE_VALUE
+
 
 END MODULE MASS

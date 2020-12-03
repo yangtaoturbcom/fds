@@ -7,8 +7,10 @@ function main()
 clear all
 close all
 
+disp('backward_facing_step ...')
+
 expdir = '../../../exp/Backward_Facing_Step/';
-datdir = '../../../out/Backward_Facing_Step/FDS_Output_Files/';
+datdir = '../../../out/Backward_Facing_Step/';
 pltdir = '../../Manuals/FDS_Validation_Guide/SCRIPT_FIGURES/Backward_Facing_Step/';
 
 rkappa = 1/.41;
@@ -51,32 +53,49 @@ symbol_vect_noleg = [{'p'},{'s'},{'d'}];
 
 line_color_vect={[20/255,168/255,113/225],[186/255,62/255,62/255],[64/255,97/255,191/255]};
 
-figure(1)
-p1 = tight_subplot(1,1, [.01 .01],[.13 .08],[.11 .019]);
-figure(2)
-p2 = tight_subplot(1,1, [.01 .01],[.13 .08],[.141 .019]);
-figure(3)
-sp1 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
-figure(4)
-sp2 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
-figure(5)
-sp3 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
-figure(6)
-sp4 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
-figure(7)
-sp5 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
+plot_style
 
+f1 = figure(1);
+set(f1,'Visible',Figure_Visibility)
+p1 = tight_subplot(1,1, [.01 .01],[.13 .08],[.11 .019]);
+
+f2 = figure(2);
+set(f2,'Visible',Figure_Visibility);
+p2 = tight_subplot(1,1, [.01 .01],[.13 .08],[.141 .019]);
+
+f3 = figure(3);
+set(f3,'Visible',Figure_Visibility);
+sp1 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
+
+f4 = figure(4);
+set(f4,'Visible',Figure_Visibility);
+sp2 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
+
+f5 = figure(5);
+set(f5,'Visible',Figure_Visibility);
+sp3 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
+
+f6 = figure(6);
+set(f6,'Visible',Figure_Visibility);
+sp4 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
+
+f7 = figure(7);
+set(f7,'Visible',Figure_Visibility);
+sp5 = tight_subplot(1,4, [.01 .01],[.142 .055],[.108 .01]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % streamwise data along bottom of channel for determining reattachment location
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-figure(1)
-plot_style
+set(0, 'CurrentFigure', f1)
+
+set(gca,'Units',Plot_Units)
+set(gca,'Position',[Plot_X Plot_Y Plot_Width Plot_Height])
 set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 Paper_Width Paper_Height]);
+set(gcf,'Position',[0 0 Paper_Width Paper_Height]);
 
 %%%Exp Data%%%
 
@@ -112,13 +131,13 @@ for q = 1:lnx
     u_wall = M{q}.data(I,j);
 
     Cf_fds = visc*u_wall/(.5*h/nx(q))/(.5*rho*U_0^2);
-    
+
     plot(x/h,Cf_fds, char(linetype_vect_leg(q)), 'Color',line_color_vect{q}, 'LineWidth', 1);
-    
+
     h_leg(q) = plot(x(1:round(length(x)/15):end)/h, Cf_fds(1:round(length(Cf_fds)/15):end), char(symbol_vect_noleg(q)), 'Color', line_color_vect{q}, 'LineWidth', 1, 'MarkerSize', 10);
 
-    yh = ylabel('{\it C_f}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
-    xh = xlabel('{\it x/h}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
+    yh = ylabel('{\it C_f}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
+    xh = xlabel('{\it x/h}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
 
     % if q == 1
     %     set(xh,'Units','Pixels')
@@ -138,7 +157,7 @@ axis([0 20 -4E-3 4E-3])
 
 lh = legend([h_dat,h_leg([1:length(h_leg)])], ['J&D',fds_key([1:length(h_leg)])], 'Location', 'SouthEast');
 set(lh,'box','off')
-%set(lh,'Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name); 
+%set(lh,'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
 
 % add Git revision if file is available
 
@@ -153,12 +172,15 @@ print(gcf,'-dpdf',[pltdir,'backward_facing_step_Cf'])
 % pressure coefficient along bottom of channel
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-figure(2)
-plot_style
+set(0, 'CurrentFigure', f2)
+
+set(gca,'Units',Plot_Units)
+set(gca,'Position',[Plot_X,Plot_Y,Plot_Width,Plot_Height])
 set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 Paper_Width Paper_Height]);
+set(gcf,'Position',[0 0 Paper_Width Paper_Height]);
 
 %%%Exp Data%%%
 j = find(strcmp(D.colheaders,'Cp-x/h'));
@@ -184,33 +206,23 @@ for q = 1:lnx
     x = x(I);
 
     j = find(strcmp(M{q}.colheaders, 'cp'));
-    Cp_fds = M{q}.data(I,j)/(U_0^2);       
+    Cp_fds = M{q}.data(I,j)/(U_0^2);
     Cp_fds = Cp_fds + Cp(end) - Cp_fds(end);
 
     plot(x/h,Cp_fds, char(linetype_vect_leg(q)), 'Color',line_color_vect{q}, 'LineWidth', 1);
 
     h_leg2(q) = plot(x(1:round(length(x)/15):end)/h, Cp_fds(1:round(length(Cp_fds)/15):end), char(symbol_vect_noleg(q)), 'Color', line_color_vect{q}, 'LineWidth', 1, 'MarkerSize', 10);
 
-    yh = ylabel('{\it C_p}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
-    xh = xlabel('\it x/h','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
-
-    % if q == 1
-    %      set(xh,'Units','Pixels')
-    %      xh_pos = get(xh,'Position');
-    %      xh_pos(1) = xh_pos(1)*1.073;             
-    %      xh_pos(2) = xh_pos(2)*1.17;
-    %      set(xh,'Position',xh_pos)
-    % end
+    yh = ylabel('{\it C_p}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
+    xh = xlabel('\it x/h','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
 
     Pos=get(yh, 'Position');
     set(yh, 'Position',[Pos(1)*.93 Pos(2) Pos(3)]);
 end
 
 lh = legend([h_dat,h_leg2([1:length(h_leg2)])], ['J&D',fds_key([1:length(h_leg2)])], 'Location', 'SouthEast');
-set(lh,'box','off')
-%set(lh,'Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
 
-% add SVN if file is available
+% add version string if file is available
 
 Git_Filename = [datdir,'backward_facing_step_',num2str(nx(1)),'_git.txt'];
 addverstr(gca,Git_Filename,'linear')
@@ -224,12 +236,13 @@ print(gcf,'-dpdf',[pltdir,'backward_facing_step_Cp'])
 % wall-normal streamwise velocity profiles
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-hx = figure(3);
-plot_style
+set(0, 'CurrentFigure', f3);
+
 set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 Paper_Width Paper_Height]);
+set(gcf,'Position',[0 0 Paper_Width Paper_Height]);
 
 for i = 1:4
 
@@ -246,10 +259,8 @@ for i = 1:4
     j = find(strcmp(D.colheaders,strcat({'U '},x_loc{i})));
     u_data = D.data(I,j);
 
-
-    axes(sp1(i))
+    set(f3,'CurrentAxes',sp1(i))
     H(1)=plot(u_data/U_0,z/h,'ko','markersize',10);
-
     hold on
 
     %%%FDS data%%%
@@ -275,20 +286,19 @@ for i = 1:4
         set(gca,'Position',[Pos(1) Pos(2)+.015 Pos(3) Pos(4)*0.98])
 
         if i == 1
-            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
-            xh=xlabel('{\it <u>/U_0}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);                                       
+            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
+            xh=xlabel('{\it <u>/U_0}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
         else
             set(gca,'XTickLabel',[])
             set(gca,'YTickLabel',[])
         end
         if q == 1
-            th = title(strcat('{\it x/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
-            tpos = get(th,'Position');
-            tpos(2) = tpos(2) * .90;
+            tpos = [0.01 3.2]; % from get(th,'Position') where th is a title handle
+            th = text(tpos(1),tpos(2),strcat('{\itx/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
             set(th,'Position',tpos)
         end
     end
-    
+
 end
 
 % add Git revision if file is available
@@ -304,12 +314,13 @@ print(gcf,'-dpdf',[pltdir,'backward_facing_step_U'])
 % wall-normal vertical velocity profiles
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-hx = figure(4);
-plot_style
+set(0, 'CurrentFigure', f4);
+
 set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 Paper_Width Paper_Height]);
+set(gcf,'Position',[0 0 Paper_Width Paper_Height]);
 
 for i = 1:4
 
@@ -324,7 +335,7 @@ for i = 1:4
     j = find(strcmp(D.colheaders,strcat({'W '},x_loc{i})));
     w_data = D.data(I,j);
 
-    axes(sp2(i))
+    set(f4,'CurrentAxes',sp2(i))
     plot(w_data/U_0,z/h,'ko','markersize',10);
     hold on
 
@@ -349,22 +360,21 @@ for i = 1:4
         set(gca,'Position',[Pos(1) Pos(2)+.015 Pos(3) Pos(4)*0.98])
 
         if i == 1
-            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
-            xh=xlabel('{\it <w>/U_0}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);               
+            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
+            xh=xlabel('{\it <w>/U_0}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
         else
             set(gca,'XTickLabel',[])
             set(gca,'YTickLabel',[])
         end
 
         if q == 1
-            th = title(strcat('{\it x/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
-            tpos = get(th,'Position');
-            tpos(2) = tpos(2) * .90;
+            tpos = [0.01 3.2]; % from get(th,'Position') where th is a title handle
+            th = text(tpos(1),tpos(2),strcat('{\itx/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
             set(th,'Position',tpos)
         end
     end
 
-    th = title(strcat('{\it x/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name, 'HorizontalAlignment', 'Left');                
+    %th = title(strcat('{\it x/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name, 'HorizontalAlignment', 'Left');
 
 end
 
@@ -381,12 +391,13 @@ print(gcf,'-dpdf',[pltdir,'backward_facing_step_W'])
 % wall-normal uu profiles
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-hx = figure(5);
-plot_style
+set(0, 'CurrentFigure', f5);
+
 set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 Paper_Width Paper_Height]);
+set(gcf,'Position',[0 0 Paper_Width Paper_Height]);
 
 for i = 1:4
 
@@ -403,7 +414,7 @@ for i = 1:4
 
     error = uu_data * .15 / U_0^2;
 
-    axes(sp3(i))
+    set(f5,'CurrentAxes',sp3(i))
     plot(uu_data/U_0^2,z/h,'ko','markersize',10);
     hold on
     %herrorbar(uu_data/U_0^2,z/h, error,'ko');
@@ -430,16 +441,15 @@ for i = 1:4
         set(gca,'Position',[Pos(1) Pos(2)+.015 Pos(3) Pos(4)*0.98])
 
         if i == 1
-            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
-            xh=xlabel('{\it <uu>/U_0^2}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
+            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
+            xh=xlabel('{\it <uu>/U_0^2}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
         else
             set(gca,'YTickLabel',[])
             set(gca,'XTickLabel',[])
         end
         if q == 1
-            th = title(strcat('{\it x/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
-            tpos = get(th,'Position');
-            tpos(2) = tpos(2) * .90;
+            tpos = [0.01 3.2]; % from get(th,'Position') where th is a title handle
+            th = text(tpos(1),tpos(2),strcat('{\itx/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
             set(th,'Position',tpos)
         end
     end
@@ -460,12 +470,13 @@ print(gcf,'-dpdf',[pltdir,'backward_facing_step_uu'])
 % wall-normal ww profiles
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-hx = figure(6);
-plot_style
+set(0, 'CurrentFigure', f6);
+
 set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 Paper_Width Paper_Height]);
+set(gcf,'Position',[0 0 Paper_Width Paper_Height]);
 
 for i = 1:4
 
@@ -482,7 +493,7 @@ for i = 1:4
 
     error = ww_data * .15 / U_0^2;
 
-    axes(sp4(i))
+    set(f6,'CurrentAxes',sp4(i))
     plot(ww_data/U_0^2,z/h,'ko','markersize',10);
     hold on
     %herrorbar(ww_data/U_0^2,z/h,error,'ko');
@@ -510,17 +521,16 @@ for i = 1:4
         set(gca,'Position',[Pos(1) Pos(2)+.015 Pos(3) Pos(4)*0.98])
 
         if i == 1
-            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name)
-            xh=xlabel('{\it <ww>/U_0^2}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
+            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name)
+            xh=xlabel('{\it <ww>/U_0^2}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
         else
             set(gca,'YTickLabel',[])
             set(gca,'XTickLabel',[])
         end
 
         if q == 1
-            th = title(strcat('{\it x/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
-            tpos = get(th,'Position');
-            tpos(2) = tpos(2) * .90;
+            tpos = [0.01 3.2]; % from get(th,'Position') where th is a title handle
+            th = text(tpos(1),tpos(2),strcat('{\itx/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
             set(th,'Position',tpos)
         end
     end
@@ -540,12 +550,13 @@ print(gcf,'-dpdf',[pltdir,'backward_facing_step_ww'])
 % wall-normal uw profiles
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-hx = figure(7);
-plot_style
+set(0, 'CurrentFigure', f7);
+
 set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 Paper_Width Paper_Height]);
+set(gcf,'Position',[0 0 Paper_Width Paper_Height]);
 
 for i = 1:4
     j = find(strcmp(D.colheaders,strcat({'z '},x_loc{i})));
@@ -561,7 +572,7 @@ for i = 1:4
 
     error = uw_data * .15 / U_0^2;
 
-    axes(sp5(i))
+    set(f7,'CurrentAxes',sp5(i))
     h_dat=plot(uw_data/U_0^2,z/h,'ko','markersize',10);
     hold on
     %herrorbar(uw_data/U_0^2,z/h,error,'ko');
@@ -588,28 +599,24 @@ for i = 1:4
         Pos = get(gca,'Position');
         set(gca,'Position',[Pos(1) Pos(2)+.015 Pos(3) Pos(4)*0.98])
 
-        th = title(strcat('{\it x/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
-
         if i == 1
-            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name)
-            xh=xlabel('{\it -<uw>/U_0^2}','Interpreter',Font_Interpreter,'Fontsize',20,'FontName',Font_Name);
+            ylabel('{\it z/h}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name)
+            xh=xlabel('{\it -<uw>/U_0^2}','Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
         else
             set(gca,'YTickLabel',[])
             set(gca,'XTickLabel',[])
         end
 
         if q == 1
-            tpos = get(th,'Position');
-            tpos(2) = tpos(2) * .90;
+            tpos = [0.01 3.2]; % from get(th,'Position') where th is a title handle
+            th = text(tpos(1),tpos(2),strcat('{\itx/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
             set(th,'Position',tpos)
         end
     end
-    
-    th = title(strcat('{\it x/h}','=',x_loc{i}),'Interpreter',Font_Interpreter,'Fontsize',Label_Font_Size,'FontName',Font_Name);
 
 end
 
-% add SVN if file is available
+% add version string if file is available
 
 Git_Filename = [datdir,'backward_facing_step_',num2str(nx(1)),'_git.txt'];
 addverstr(gca,Git_Filename,'linear',0,1.05)
@@ -633,11 +640,11 @@ function ha = tight_subplot(Nh, Nw, gap, marg_h, marg_w)
 %   in:  Nh      number of axes in hight (vertical direction)
 %        Nw      number of axes in width (horizontaldirection)
 %        gap     gaps between the axes in normalized units (0...1)
-%                   or [gap_h gap_w] for different gaps in height and width 
+%                   or [gap_h gap_w] for different gaps in height and width
 %        marg_h  margins in height in normalized units (0...1)
-%                   or [lower upper] for different lower and upper margins 
+%                   or [lower upper] for different lower and upper margins
 %        marg_w  margins in width in normalized units (0...1)
-%                   or [left right] for different left and right margins 
+%                   or [left right] for different left and right margins
 %
 %  out:  ha     array of handles of the axes objects
 %                   starting from upper left corner, going row-wise as in
@@ -655,26 +662,26 @@ if nargin<3; gap = .02; end
 if nargin<4 || isempty(marg_h); marg_h = .05; end
 if nargin<5; marg_w = .05; end
 
-if numel(gap)==1; 
+if numel(gap)==1;
     gap = [gap gap];
 end
-if numel(marg_w)==1; 
+if numel(marg_w)==1;
     marg_w = [marg_w marg_w];
 end
-if numel(marg_h)==1; 
+if numel(marg_h)==1;
     marg_h = [marg_h marg_h];
 end
 
-axh = (1-sum(marg_h)-(Nh-1)*gap(1))/Nh; 
+axh = (1-sum(marg_h)-(Nh-1)*gap(1))/Nh;
 axw = (1-sum(marg_w)-(Nw-1)*gap(2))/Nw;
 
-py = 1-marg_h(2)-axh; 
+py = 1-marg_h(2)-axh;
 
 ha = zeros(Nh*Nw,1);
 ii = 0;
 for ih = 1:Nh
     px = marg_w(1);
-    
+
     for ix = 1:Nw
         ii = ii+1;
         ha(ii) = axes('Units','normalized', ...
@@ -712,7 +719,7 @@ function hh = herrorbar(x, y, l, u, symbol)
 %      herrorbar(x,y,e)
 %   draws symmetric horizontal error bars of unit standard deviation.
 %
-%   This code is based on ERRORBAR provided in MATLAB.   
+%   This code is based on ERRORBAR provided in MATLAB.
 %
 %   See also ERRORBAR
 
@@ -722,7 +729,7 @@ function hh = herrorbar(x, y, l, u, symbol)
 %   File history:
 %   August 2006 (Jos): I have taken back ownership. I like to thank Greg Aloe from
 %   The MathWorks who originally introduced this piece of code to the
-%   Matlab File Exchange. 
+%   Matlab File Exchange.
 %   September 2003 (Greg Aloe): This code was originally provided by Jos
 %   from the newsgroup comp.soft-sys.matlab:
 %   http://newsreader.mathworks.com/WebX?50@118.fdnxaJz9btF^1@.eea3ff9
@@ -846,7 +853,7 @@ end
 
 function cell2csv(filename,cellArray,delimiter)
 % Writes cell array content into a *.csv file.
-% 
+%
 % CELL2CSV(filename,cellArray,delimiter)
 %
 % filename      = Name of the file to save. [ i.e. 'text.csv' ]

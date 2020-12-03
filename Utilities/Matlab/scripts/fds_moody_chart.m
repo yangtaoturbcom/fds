@@ -29,7 +29,7 @@ for i=1:length(RR)
         M(j,1) = Re(j);
         M(j,i+1) = f(j);
     end
-    
+
     if i==1; loglog(Re,f,'k-'); hold on; end
     if i==2; loglog(Re,f,'b-'); end
     if i==3; loglog(Re,f,'r-'); end
@@ -42,17 +42,14 @@ f_DNS = (24./Re_DNS);
 loglog(Re_DNS,f_DNS,'k-')
 
 plot_style
-set(gca,'Units',Plot_Units)
 set(gca,'FontName',Font_Name)
-%set(gca,'Position',[0.75,0.75,4.5,3.45])
-set(gca,'Position',[Plot_X,Plot_Y,Plot_Width,Plot_Height])
-set(gcf,'DefaultLineLineWidth',Line_Width)
+set(gca,'FontSize',Label_Font_Size)
 
 axis([1e2 1e8 .005 .2]) % based on MYO
 xlabel('Re_{\it H}','Interpreter',Font_Interpreter,'FontSize',Label_Font_Size)
 ylabel('\it f','Interpreter',Font_Interpreter,'FontSize',Label_Font_Size,'Rotation',0.0)
 
-outdir = '../../../out/Moody_Chart/FDS_Output_Files/';
+outdir = '../../../out/Moody_Chart/';
 
 % gather FDS results (laminar)
 L = 1;
@@ -81,36 +78,36 @@ dpdx = -100;
 [f,Re] = friction_factor_calc(dpdx,L,[outdir,'moody_dpdx=-100_N32_devc.csv'],mu);H(3)=loglog(Re,f,'ko');
 
 dpdx = -.0001;
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p0001_dpdx=-p0001_N8_devc.csv'],mu);loglog(Re,f,'bsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p001_dpdx=-p0001_N8_devc.csv'],mu);loglog(Re,f,'rsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p01_dpdx=-p0001_N8_devc.csv'],mu);loglog(Re,f,'gsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p1_dpdx=-p0001_N8_devc.csv'],mu);loglog(Re,f,'msq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p0001_dpdx=-p0001_N8_devc.csv'],mu);loglog(Re,f,'bsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p001_dpdx=-p0001_N8_devc.csv'],mu);loglog(Re,f,'rsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p01_dpdx=-p0001_N8_devc.csv'],mu);loglog(Re,f,'gsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p1_dpdx=-p0001_N8_devc.csv'],mu);loglog(Re,f,'msq')
 
 dpdx = -.01;
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p0001_dpdx=-p01_N8_devc.csv'],mu);loglog(Re,f,'bsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p001_dpdx=-p01_N8_devc.csv'],mu);loglog(Re,f,'rsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p01_dpdx=-p01_N8_devc.csv'],mu);loglog(Re,f,'gsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p1_dpdx=-p01_N8_devc.csv'],mu);loglog(Re,f,'msq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p0001_dpdx=-p01_N8_devc.csv'],mu);loglog(Re,f,'bsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p001_dpdx=-p01_N8_devc.csv'],mu);loglog(Re,f,'rsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p01_dpdx=-p01_N8_devc.csv'],mu);loglog(Re,f,'gsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p1_dpdx=-p01_N8_devc.csv'],mu);loglog(Re,f,'msq')
 
 dpdx = -1;
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p0001_dpdx=-1_N8_devc.csv'],mu);loglog(Re,f,'bsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p001_dpdx=-1_N8_devc.csv'],mu);loglog(Re,f,'rsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p01_dpdx=-1_N8_devc.csv'],mu);loglog(Re,f,'gsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p1_dpdx=-1_N8_devc.csv'],mu);loglog(Re,f,'msq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p0001_dpdx=-1_N16_devc.csv'],mu);loglog(Re,f,'b^')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p001_dpdx=-1_N16_devc.csv'],mu);loglog(Re,f,'r^')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p01_dpdx=-1_N16_devc.csv'],mu);loglog(Re,f,'g^')
-[f,Re] = friction_factor_calc(dpdx,2*L,[outdir,'z0=p02_dpdx=-1_N16_devc.csv'],mu);H(4)=loglog(Re,f,'k>');loglog(Re,f,'g>');
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p0001_dpdx=-1_N8_devc.csv'],mu);loglog(Re,f,'bsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p001_dpdx=-1_N8_devc.csv'],mu);loglog(Re,f,'rsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p01_dpdx=-1_N8_devc.csv'],mu);loglog(Re,f,'gsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p1_dpdx=-1_N8_devc.csv'],mu);loglog(Re,f,'msq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p0001_dpdx=-1_N16_devc.csv'],mu);loglog(Re,f,'b^')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p001_dpdx=-1_N16_devc.csv'],mu);loglog(Re,f,'r^')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p01_dpdx=-1_N16_devc.csv'],mu);loglog(Re,f,'g^')
+[f,Re] = friction_factor_calc(dpdx,2*L,[outdir,'s=p02_dpdx=-1_N16_devc.csv'],mu);H(4)=loglog(Re,f,'k>');loglog(Re,f,'g>');
 
 dpdx = -100;
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p0001_dpdx=-100_N8_devc.csv'],mu);loglog(Re,f,'bsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p001_dpdx=-100_N8_devc.csv'],mu);loglog(Re,f,'rsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p01_dpdx=-100_N8_devc.csv'],mu);loglog(Re,f,'gsq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p1_dpdx=-100_N8_devc.csv'],mu);loglog(Re,f,'msq')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p0001_dpdx=-100_N16_devc.csv'],mu);loglog(Re,f,'b^')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p001_dpdx=-100_N16_devc.csv'],mu);loglog(Re,f,'r^')
-[f,Re] = friction_factor_calc(dpdx,L,[outdir,'z0=p01_dpdx=-100_N16_devc.csv'],mu);loglog(Re,f,'g^')
-[f,Re] = friction_factor_calc(dpdx,2*L,[outdir,'z0=p02_dpdx=-100_N16_devc.csv'],mu);loglog(Re,f,'g>')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p0001_dpdx=-100_N8_devc.csv'],mu);loglog(Re,f,'bsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p001_dpdx=-100_N8_devc.csv'],mu);loglog(Re,f,'rsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p01_dpdx=-100_N8_devc.csv'],mu);loglog(Re,f,'gsq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p1_dpdx=-100_N8_devc.csv'],mu);loglog(Re,f,'msq')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p0001_dpdx=-100_N16_devc.csv'],mu);loglog(Re,f,'b^')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p001_dpdx=-100_N16_devc.csv'],mu);loglog(Re,f,'r^')
+[f,Re] = friction_factor_calc(dpdx,L,[outdir,'s=p01_dpdx=-100_N16_devc.csv'],mu);loglog(Re,f,'g^')
+[f,Re] = friction_factor_calc(dpdx,2*L,[outdir,'s=p02_dpdx=-100_N16_devc.csv'],mu);loglog(Re,f,'g>')
 
 text(1.3e8,2e-1,'{\it s/H}','Interpreter',Font_Interpreter,'FontSize',Key_Font_Size,'Fontname',Font_Name)
 text(1.3e8,1.2e-2,num2str(RR(2)),'Interpreter',Font_Interpreter,'FontSize',Key_Font_Size,'Fontname',Font_Name)
@@ -118,7 +115,7 @@ text(1.3e8,1.95e-2,num2str(RR(3)),'Interpreter',Font_Interpreter,'FontSize',Key_
 text(1.3e8,3.85e-2,num2str(RR(4)),'Interpreter',Font_Interpreter,'FontSize',Key_Font_Size,'Fontname',Font_Name)
 text(1.3e8,1.02e-1,num2str(RR(5)),'Interpreter',Font_Interpreter,'FontSize',Key_Font_Size,'Fontname',Font_Name)
 h = legend(H,'\it N_z=8, H=1','\it N_z=16, H=1','\it N_z=32, H=1','\it N_z=16, H=2','Location','Southwest');
-set(h,'Interpreter',Font_Interpreter)
+set(h,'Interpreter',Font_Interpreter,'FontSize',Key_Font_Size)
 
 % add VerStr if file is available
 
@@ -127,9 +124,10 @@ addverstr(gca,Git_Filename,'loglog')
 
 % print to pdf
 set(gcf,'Visible',Figure_Visibility);
+set(gcf,'Units',Paper_Units);
 set(gcf,'PaperUnits',Paper_Units);
 set(gcf,'PaperSize',[1.1*Paper_Width Paper_Height]);
-set(gcf,'PaperPosition',[0 0 1.1*Paper_Width Paper_Height]);
+set(gcf,'Position',[0 0 1.1*Paper_Width Paper_Height]);
 print(gcf,'-dpdf','../../Manuals/FDS_Verification_Guide/SCRIPT_FIGURES/fds_moody_chart')
 
 
